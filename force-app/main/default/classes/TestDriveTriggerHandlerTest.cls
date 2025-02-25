@@ -24,9 +24,9 @@ public class TestDriveTriggerHandlerTest {
     List<Store_Details__mdt> storeDetails = [SELECT Name__c, Dealer_Code__c, IsActive__c FROM Store_Details__mdt WHERE IsActive__c = true];
     
         
-    Lead testLead1 = new Lead(FirstName = 'Test', LastName = 'Ride', Company = 'Test Company 1', LeadSource = 'Google', Dealer_Code__c = '292001', Phone = '1234567890');
+    Lead testLead1 = new Lead(FirstName = 'Test', LastName = 'Ride', Company = 'Test Company 1', LeadSource = 'Google', PostalCode='560078',Dealer_Code__c='292002', Phone = '1234567890');
     insert testLead1; 
-    Lead testLead2 = new Lead(FirstName = 'Test2', LastName = 'Ride2', Company = 'Test Company 2', LeadSource = 'Bike Dekho', Dealer_Code__c = '292002', Phone = '0987654321');
+    Lead testLead2 = new Lead(FirstName = 'Test2', LastName = 'Ride2', Company = 'Test Company 2', LeadSource = 'Bike Dekho', PostalCode='560078',Dealer_Code__c='292002', Phone = '0987654321');
     insert testLead2;         
     
     Test_Drive__c testDrive1 = new Test_Drive__c(Name='Drive 1', Lead__c = testLead1.Id, Ride_Type__c= 'Home Ride',Test_Ride_Date__c=System.Now());

@@ -30,7 +30,7 @@ public class ScheduleIfNoBookingTest {
         
         Test.startTest();
         String cronExpression = '0 0 0 1 1 ?';
-        System.schedule('Test', cronExpression, new ScheduleIfNoBooking());
+        System.schedule('Test2', cronExpression, new ScheduleIfNoBooking());
         Test.stopTest();
         
     }

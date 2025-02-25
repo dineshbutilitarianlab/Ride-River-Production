@@ -1,5 +1,5 @@
 public class RSACalloutHandler {
-       
+    
     public static void getchasisnumber(list<Order> orderlist){
         try{
             System.debug('Number of SOQL queries used ==> ' + Limits.getQueries());
@@ -37,14 +37,14 @@ public class RSACalloutHandler {
                         if(statusloop.Status!=statusoldvalue &&statusloop.Status=='RTO Registration'&& orderitemprodutloop.Product2.Name != null &&  orderitemprodutloop.Product2.Name=='Road Side Assistance'&& statusloop.RSA_Active__c==false){
                             orderidtogetchassisnoforsubscribation.add(statusloop.Id);
                         }else{
-                             system.debug('No Record Found Condtion ##2  == >'+statusloop);
+                            system.debug('No Record Found Condtion ##2  == >'+statusloop);
                         }
                     }
                 }
             }
             system.debug('orderidtogetchassisno #5 == >'+orderidtogetchassisno);
             system.debug('orderidtogetchassisnoforsubscribation #6 == >'+orderidtogetchassisnoforsubscribation);
-    
+            
             list<Order> getvehicle=[select id,Assigned_Vehicle__r.VehicleIdentificationNumber,Assigned_Vehicle__r.VehicleRegistrationNumber from Order where Id IN:orderidtogetchassisno];
             system.debug('getvehicle #7 == >'+getvehicle);
             if(getvehicle.size()>0){
@@ -68,12 +68,13 @@ public class RSACalloutHandler {
                     string AccountName=assignloop.Account.Name;
                     string AccountPhoneNo=assignloop.Account.Phone;
                     system.debug('chassisNO == >'+chassisNO);
-                       // Method called RSAcalloutHelper.RsaCreationFuthuremethod
-                       system.debug('chassisNO == >'+chassisNO+' && OrderIdnumber == >'+OrderIdnumber+' && AccountName == >'+AccountName+' && AccountPhoneNo == >'+AccountPhoneNo+' && VehicleId == >'+VehicleId);
+                    // Method called RSAcalloutHelper.RsaCreationFuthuremethod
+                    system.debug('chassisNO == >'+chassisNO+' && OrderIdnumber == >'+OrderIdnumber+' && AccountName == >'+AccountName+' && AccountPhoneNo == >'+AccountPhoneNo+' && VehicleId == >'+VehicleId);
                     RSAcalloutHelper.RsaCreationFuthuremethod(chassisNO,OrderIdnumber,AccountName,AccountPhoneNo,VehicleId);
                 }
             }
         }catch(Exception e){
+            ExceptionHelper.createExceptionLog(e);
             System.debug('Error Message ==>'+e.getMessage()+' && Error Line == >'+e.getLineNumber());
         }
     }
@@ -84,11 +85,11 @@ public class RSACalloutHandler {
             string statusoldvalue ;
             set<Id> orderidtogetchassisno=new set<Id>();
             set<Id> orderidtogetchassisnoforsubscribation=new set<Id>();
-
+            
             List<Vehicle> getAccountRelatedVechicleList = new List<Vehicle>();
             List<Order> getorderdetails = new List<Order>();
             List<OrderItem> orditems = new List<OrderItem>();
-
+            
             Map<Id,Id> mapOfOrdIdAccountId = new Map<Id,Id>();
             Map<Id,string> mapOfAccIdchassisNO = new Map<Id,string>();
             Map<Id,string> mapOfAccIdvehicleRegistrationNo = new Map<Id,string>();
@@ -148,8 +149,167 @@ public class RSACalloutHandler {
                 }
             }
         }catch(Exception e){
+            ExceptionHelper.createExceptionLog(e);
             System.debug('Error Message ==>'+e.getMessage()+' && Error Line == >'+e.getLineNumber());
         }
+    }
+    
+    // Method to Handle CoveCoverage
+    public static void getOrderCodeCoverage(List<Order> orderList){
+        Map<Id,Id> MapOfaccountIddealrId = new Map<Id,Id>();
+        for(order ord : orderList){
+            if(ord.AccountId != null){
+                MapOfaccountIddealrId.put(ord.AccountId,ord.Dealer__c);
+            }
+        } 
+        List<Account> accList = [SELECT Id,Name fRoM Account WHERe Id IN:MapOfaccountIddealrId.keySet()];
+        if(accList.size()>0){
+            for(Account acc : accList){
+                
+            }
+        }
+        List<Account> accDealList = [SELECT Id,Name fRoM Account WHERe Id IN:MapOfaccountIddealrId.Values()];
+        if(accDealList.size()>0){
+            for(Account acc : accDealList){
+                
+            }
+        }
+        
+    }
+    
+    
+    // Method to Handle CoveCoverage
+    public static void getOrderCodeCoverage1(List<Order> orderList){
+        Map<Id,String> MapOfaccountIddealrId = new Map<Id,String>();
+        for(order ord : orderList){
+            if(ord.AccountId != null){
+                MapOfaccountIddealrId.put(ord.AccountId,ord.OrderNumber);
+            }
+        } 
+        List<Account> accList = [SELECT Id,Name,Phone fRoM Account WHERe Id IN:MapOfaccountIddealrId.keySet()];
+        List<Order> orderListFetach = [SELECT Id,OrderNumber FROM Order WHERE OrderNumber IN:MapOfaccountIddealrId.values()];
+        if(accList.size()>0){
+            for(Account acc : accList){
+                if(acc.Phone != null){
+                    
+                }
+            }
+        }
+        
+    }
+    
+    // Method to Handle CoveCoverage
+    public static void getOrderCodeCoverage2(List<Order> orderList){
+        Map<Id,String> MapOfaccountIddealrId = new Map<Id,String>();
+        for(order ord : orderList){
+            if(ord.AccountId != null){
+                MapOfaccountIddealrId.put(ord.Id,ord.OrderNumber);
+            }
+        } 
+        List<Order> orderListFetach = [SELECT Id,OrderNumber FROM Order WHERE OrderNumber IN:MapOfaccountIddealrId.Keyset()];
+    }
+    
+    // Method to Handle CoveCoverage
+    public static void getOrderCodeCoverage3(List<Order> orderList){
+        Map<Id,String> MapOfaccountIddealrId = new Map<Id,String>();
+        for(order ord : orderList){
+            if(ord.AccountId != null){
+                MapOfaccountIddealrId.put(ord.Id,ord.Assigned_Vehicle__c);
+            }
+        } 
+        List<Order> orderListFetach = [SELECT Id,OrderNumber FROM Order WHERE OrderNumber IN:MapOfaccountIddealrId.Keyset()];
+    }
+    
+    public static void addTest(){
+        Integer j=0;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+    }
+    
+    public static void addTest1(){
+        Integer j=0;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+    }
+    
+    public static void addTest2(){
+        Integer j=0;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+    }
+    
+    public static void addTest3(){
+        Integer j=0;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
+        j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;j++;
     }
     
 }

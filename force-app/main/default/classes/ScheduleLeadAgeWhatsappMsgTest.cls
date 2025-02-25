@@ -19,8 +19,8 @@ public class ScheduleLeadAgeWhatsappMsgTest {
         
         // Create Leads
         List<Lead> leadsToInsert = new List<Lead>();
-        Lead lead1 = new Lead(LastName='Test', Company='Test Co', LeadSource='Google', Dealer_Code__c='291001', Phone='1234567890');
-        Lead lead2 = new Lead(LastName='Test2', Company='Test2 Co', LeadSource='Facebook', Dealer_Code__c='291002', Phone='9876543210');
+        Lead lead1 = new Lead(LastName='Test', Company='Test Co', LeadSource='Google', Dealer_Code__c='291001', Phone='1234567890',Status='New');
+        Lead lead2 = new Lead(LastName='Test2', Company='Test2 Co', LeadSource='Facebook', /*Dealer_Code__c='291002'*/PostalCode='560078', Phone='9876543210');
         leadsToInsert.add(lead1);
         leadsToInsert.add(lead2);
         insert leadsToInsert;
@@ -28,7 +28,7 @@ public class ScheduleLeadAgeWhatsappMsgTest {
         
         Test.startTest();
         String cronExpression = '0 0 0 1 1 ?';
-        System.schedule('Test WhatsApp Schedule', cronExpression, new scheduleLeadAgeWhatsappMsg());
+        System.schedule('Test WhatsApp Schedule22', cronExpression, new scheduleLeadAgeWhatsappMsg());
         
         
         

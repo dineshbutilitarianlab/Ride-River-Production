@@ -4,6 +4,13 @@ private class AttachmentHandlerClassTest {
     @isTest
     static void testAttachmentHandlerMethod() {
          // Create sample Order and Vehicle records
+          WhatsappIntegration__c mockIntegration = new WhatsappIntegration__c(
+            Name = 'WhatsApp API',
+            API_Endpoint__c = 'https://api.whatsapp.com/send',
+            API_Key__c = 'mock-api-key',fullpayment_done__c='random.jpg'
+        );
+        insert mockIntegration;
+        
         Account acc = new Account(Name = 'Test Name',Type = 'Customer',Phone='9011113246' );
         insert acc;
         

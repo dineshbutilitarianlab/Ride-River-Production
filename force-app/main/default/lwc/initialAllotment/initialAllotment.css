@@ -1,3 +1,6 @@
-.custom-container{
-	color : black;
+.table-container {
+    max-width: 100%; /* Ensure it fits within the available space */
+    overflow-x: auto; /* Enables horizontal scrolling */
+    display: block;
+    white-space: nowrap; /* Prevents text from wrapping */
 }

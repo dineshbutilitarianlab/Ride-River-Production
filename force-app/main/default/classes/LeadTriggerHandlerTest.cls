@@ -64,7 +64,7 @@ public class LeadTriggerHandlerTest {
         Store_Details__mdt dealerCodes2 = new Store_Details__mdt(Name__c='test2',Dealer_Code__c='292002',IsActive__c=true);*/
         
         List<Lead> leadsToInsert = new List<Lead>();
-        Lead l1 = new Lead(LastName = 'Test 1', Company = 'Test Company 1', LeadSource = 'Google', Dealer_Code__c = '292001', Phone = '6666666666');
+        Lead l1 = new Lead(LastName = 'Test 1', Company = 'Test Company 1', LeadSource = 'Google',PostalCode='560078', Phone = '6666666666');
         Lead l2 = new Lead(LastName = 'Test 2', Company = 'Test Company 2', LeadSource = 'Bike Dekho', Dealer_Code__c = '292002', Phone = '8888888888');        
         leadsToInsert.add(l1);
         leadsToInsert.add(l2);

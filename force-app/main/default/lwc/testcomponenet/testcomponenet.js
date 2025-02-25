@@ -7,10 +7,10 @@ import Updaterescheduledate from '@salesforce/apex/LeadCompController.reschedule
 import cancelride from '@salesforce/apex/LeadCompController.leadstatuscancel';
 import completeride from '@salesforce/apex/LeadCompController.leadstatuscomplete';
 import Feedback from '@salesforce/apex/LeadCompController.followupfeedback';
-import newfollowup from '@salesforce/apex/LeadCompController.newfollowup';
-import SearchLead from '@salesforce/apex/homecontroller.getLeadsList';
+import SearchLead from '@salesforce/apex/LeadCompController.getLeadsListBySearchKeyWord';
 import getleadrecord from '@salesforce/apex/LeadCompController.getLeaddeatails';
 import leadupdate from '@salesforce/apex/LeadCompController.updatelead';
+import updateLeadStatus from '@salesforce/apex/LeadCompController.updateLeadStatusToClosedLost';
 import bookingid from '@salesforce/apex/homecontroller.bookingid';
 import createnewfollowup from '@salesforce/apex/homecontroller.createnewfollowup';
 import homerideaddress from '@salesforce/apex/homecontroller.createhomeride';
@@ -29,11 +29,8 @@ import { CurrentPageReference } from 'lightning/navigation';
 import { getObjectInfo } from 'lightning/uiObjectInfoApi';
 import { getPicklistValues } from 'lightning/uiObjectInfoApi';
 import LEAD_OBJECT from '@salesforce/schema/Lead';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import LEAD_SOURCE_FIELD from '@salesforce/schema/Lead.LeadSource';
-import getNotAttendedLeads from '@salesforce/apex/LeadCompController.NotAttendedgetLeads';
-import getNotAttendedfollowups from '@salesforce/apex/LeadCompController.NotAttendedFollowUp';
-import getNotAttendedTestdrives from '@salesforce/apex/LeadCompController.NotAttendedgetTestDriveRecords';
-
 
 
 export default class Testcomponenet extends NavigationMixin(LightningElement) {
@@ -53,8 +50,8 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
     @track showTestRideFeedbackModal = false;
     @track FeedbackValue;
     @track recordId;
-    @track bRecordFound = true;
-    @track btestRideRecordFound = true;
+    @track bRecordFound = false;
+    @track btestRideRecordFound = false;
     @track leaddetailspageopen = false;
     @track leaddetails = false;
     @track ifFollowUp = false;
@@ -136,8 +133,16 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
     @track url = '';
      leadSourceOptions = [];
     recordTypeId;
-    @track Followuptittle;
-    @track Testridetittle;
+
+    // for pagination of Leads 
+    @track pageNumber = 1;
+    pageSize = 50;
+    disablePrevious = true;
+    disableNext = false;
+
+    // for closed lost 
+    @track showConfirmModal = false; 
+
      @wire(getObjectInfo, { objectApiName: LEAD_OBJECT })
     objectInfo({ data, error }) {
         if (data) {
@@ -146,6 +151,8 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
             this.error = error;
         }
     }
+
+
 
     // Fetch picklist values for the LeadSource field
     @wire(getPicklistValues, { recordTypeId: '$recordTypeId', fieldApiName: LEAD_SOURCE_FIELD })
@@ -164,7 +171,7 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
         }
     }
      
-     
+
     
     handlestreet(event){
         this.street=event.target.value;
@@ -312,7 +319,7 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
         },
         { label: 'Mobile', fieldName: 'Phone__c' },
         { label: 'Type', fieldName: 'Follow_Up__c' },
-        // { label: 'Follow-Up Date', fieldName: 'FollowupDate', type: 'date' },
+        { label: 'Follow-Up Date', fieldName: 'FollowupDate', type: 'date' },
         // { label: 'Subject', fieldName: 'Subject', type: 'Text' },
         //  { label: 'Lead Age', fieldName: 'Lead_Age__c' },
         { label: 'Previous follow up date', fieldName: 'Previous_Followup_date__c', type: 'datetime' },
@@ -359,10 +366,20 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
             initialWidth: 150
         },
         {
-            label: 'Lead Age',
-            fieldName: 'Lead_Age__c',
+            label: 'Schedule Date',
+            fieldName: 'Test_Ride_Date__c',
             initialWidth: 100
         },
+        // {
+        //     label: 'Lead Age',
+        //     fieldName: 'Lead_Age__c',
+        //     initialWidth: 100
+        // },
+        // {
+        //     label: 'Reschedule Date',
+        //     fieldName: 'Reschedule_Date__c',
+        //     initialWidth: 100
+        // },
         {
             label: 'Time',
             fieldName: 'TestRideTime',
@@ -396,6 +413,16 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
                 label: 'No Show',
                 name: 'Cancel',
                 title: 'Cancel',
+                variant: 'destructive'
+            }
+        },
+        {
+            type: 'button',
+            initialWidth: 120,
+            typeAttributes: {
+                label: 'Closed Lost',
+                name: 'Closed Lost',
+                title: 'Closed Lost',
                 variant: 'destructive'
             }
         },
@@ -452,6 +479,7 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
     }
 
     handleFollowUp() {
+        debugger;
         console.info('handleFollowUp');
         this.getFollowupdetails();
         this.ifFollowUp = true;
@@ -566,6 +594,39 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
 
     }
 
+    @track fromDate;
+    @track toDate;
+
+    // Handle From Date Change
+    handleFromDateChange(event) {
+        this.fromDate = event.target.value;
+    }
+
+    // Handle To Date Change
+    handleToDateChange(event) {
+        this.toDate = event.target.value;
+    }
+
+    
+    filterLeads() {
+        debugger;
+        // if (!this.fromDate || !this.toDate) {
+        //     alert('Please select both From Date and To Date.');
+        //     return;
+        // }
+
+        this.bRecordFound = true;
+        this.getFollowupdetails(this.fromDate, this.toDate);
+    }
+
+    filterTestRides() {
+        debugger;
+ 
+
+        this.btestRideRecordFound = true;
+        this.getFgetTestRidesdetails(this.fromDate, this.toDate);
+    }
+
     handelcancelreason() {
         if (confirm('Are you sure you want to save the changes?')) {
             console.log('id' + this.selectedrow.TestRideId);
@@ -647,6 +708,22 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
         this.Ridetypetrue = false;
     }
 
+        // for pagination added by rohit
+// ------------------------------  //
+handlePrevious() {
+    if (this.pageNumber > 1) {
+        this.pageNumber--;
+        this.getLeadDetails();
+    }
+}
+
+handleNext() {
+    this.pageNumber++;
+    this.getLeadDetails();
+}
+
+// ------------------------------  //
+
     connectedCallback() {
         this.getLeadDetails();
 
@@ -665,27 +742,17 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
     }
 
     getLeadDetails() {
-        getList()
+        getList({ pageSize: this.pageSize, pageNumber: this.pageNumber })
             .then(result => {
                 console.log('hcvsshshs=' + JSON.stringify(result));
                 //  this.testridescount=result;
                 // console.log('getTestRidesdetail'+(this.testridescount.length));
                 this.records = result;
                 //consol.log('records '+this.records);
-            })
-            .catch(error => {
-                console.log(error);
-                // this.handleErrorClick();
-            })
-    }
-     NotAttendedgetLeadDetails() {
-        getNotAttendedLeads()
-            .then(result => {
-                console.log('hcvsshshs=' + JSON.stringify(result));
-                //  this.testridescount=result;
-                // console.log('getTestRidesdetail'+(this.testridescount.length));
-                this.records = result;
-                //consol.log('records '+this.records);
+
+                // Disable Next if less than pageSize records are returned
+                this.disableNext = result.length < this.pageSize;
+                this.disablePrevious = this.pageNumber === 1;
             })
             .catch(error => {
                 console.log(error);
@@ -693,20 +760,18 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
             })
     }
 
-    getFollowupdetails() {
-        this.Followuptittle="Today's Follow Ups"
-
-        getFllowups({
-
-        })
+    getFollowupdetails(fromDate, toDate) {
+        debugger;
+        getFllowups({fromDate, toDate })
             .then(result => {
+                debugger;
                 console.log('result : ' + JSON.stringify(result));
                     let valueArr = result.lstFollowUp;
                     let dataWhenfollowUp = [];
                     let arrData = [];
                     for (let i = 0; i < valueArr.length; i++) {
                         let val = {
-                            LeadName: valueArr[i]?.Lead__c ? valueArr[i]?.Lead__r?.Name || '' : '',
+                           LeadName: valueArr[i]?.Lead__c ? valueArr[i]?.Lead__r?.Name || '' : '',
                             Veiw_lead: valueArr[i].Lead__c ? valueArr[i].Lead__c : '',
                            Lead_Age__c: valueArr[i].Lead__c ? valueArr[i].Lead__r?.Lead_Age__c ||'' : '',
                             FollowupDate: this.followupconvertToIST(valueArr[i].Follow_Up_Date__c),
@@ -752,72 +817,8 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
                 this.handleErrorClick();
             })
     }
-     NotAttendedgetFollowupdetails() {
-        this.Followuptittle='Not Attended Follow Ups'
-        this.ifFollowUp = true;
-        this.leaddetails = false;
-        this.ifTesTRideUp = false;
-        this.Ridetypetrue = false;
-        this.shownewfollowupModal = false;
-        getNotAttendedfollowups({
-
-        })
-            .then(result => {
-                console.log('result : ' + JSON.stringify(result));
-                    let valueArr = result.lstFollowUp;
-                    let dataWhenfollowUp = [];
-                    let arrData = [];
-                    for (let i = 0; i < valueArr.length; i++) {
-                        let val = {
-                            LeadName: valueArr[i]?.Lead__c ? valueArr[i]?.Lead__r?.Name || '' : '',
-                            Veiw_lead: valueArr[i].Lead__c ? valueArr[i].Lead__c : '',
-                           Lead_Age__c: valueArr[i].Lead__c ? valueArr[i].Lead__r?.Lead_Age__c ||'' : '',
-                            FollowupDate: this.followupconvertToIST(valueArr[i].Follow_Up_Date__c),
-                            Follow_Up__c: valueArr[i].Follow_Up__c ? valueArr[i].Follow_Up__c : '',
-                            // Folllow_Up1_Summary__c: valueArr[i].Folllow_Up1_Summary__c ? valueArr[i].Folllow_Up1_Summary__c : '',
-                            // Previousfollowupdate: result.oldValue[valueArr[i].Id] ? result.oldValue[valueArr[i].Id].OldValue : '',
-                            Previous_Feedback__c: valueArr[i].Feedback__c ? valueArr[i].Feedback__c : '',
-                            Previous_Followup_date__c: this.followupconvertToIST(valueArr[i].Previous_Followup_date__c),
-                            Subject: valueArr[i].Subject__c ? valueArr[i].Subject__c : '',
-                            FollupId: valueArr[i].Id,
-                            Lead__c: valueArr[i].Lead__c ? valueArr[i].Lead__c : '',
-                            Phone__c: valueArr[i].Lead__c ? valueArr[i].Lead__r?.Phone ||'' : '',
-                          // Country: valueArr[i].Lead__c ? valueArr[i].Lead__r.Country : '',
-                           //State: valueArr[i].Lead__c ? valueArr[i].Lead__r.State : '',
-                          // City: valueArr[i].Lead__c ? valueArr[i].Lead__r.City : '',
-                         //  Street: valueArr[i].Lead__c ? valueArr[i].Lead__r.Street : '',
-                          // PostalCode: valueArr[i].Lead__c ? valueArr[i].Lead__r.PostalCode : ''
-
-
-                        }
-                        console.log('phone=' + JSON.stringify(val.Country));
-                        arrData.push(val);
-
-                        this.recordId = valueArr[i].Lead__c ? valueArr[i].Lead__c : '';
-
-                        /* 
-                        this.followUpsId = result[i].Id ? result[i].Id : '';
-                        console.log('followUpsId : ',this.followUpsId); */
-                    }
-                    console.log('OUTPUT : ', arrData);
-
-                    this.dataFolloUp = arrData
-                    this.followupscount = this.dataFolloUp.length;
-                    //this.data
-                
-                if (result.lstLead) {
-                    this.records = result.lstLead;
-                    console.log('hhhh=' + JSON.stringify(this.records));
-                }
-            })
-            .catch(error => {
-                console.log('Error ' + error);
-                this.handleErrorClick();
-            })
-    }
-    getFgetTestRidesdetails() {
-        this.Testridetittle="Today's Test Rides "
-        getTestRidesdetail()
+    getFgetTestRidesdetails(fromDate, toDate) {
+        getTestRidesdetail({fromDate, toDate })
             .then(result => {
 
 
@@ -827,11 +828,13 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
                     for (let i = 0; i < valueArr.length; i++) {
                         console.log('valueArr[i].MobilePhone__c>>>>' + JSON.stringify(valueArr[i].MobilePhone__c));
                         let value = {
-                            LeadName: valueArr[i]?.Lead__c ? valueArr[i]?.Lead__r?.Name || '' : '',
+                           LeadName: valueArr[i]?.Lead__c ? valueArr[i]?.Lead__r?.Name || '' : '',
                             Mobile: valueArr[i].MobilePhone__c ? valueArr[i].MobilePhone__c : '',
                             Ride_Type__c: valueArr[i].Ride_Type__c ? valueArr[i].Ride_Type__c : '',
                             Lead_Age__c: valueArr[i].Lead__c ? valueArr[i].Lead__r?.Lead_Age__c ||'' : '',
                             //  datandtime: valueArr[i].Test_Drive_Date__c ? valueArr[i].Test_Drive_Date__c : '',
+                            Test_Ride_Date__c: this.followupconvertToIST(valueArr[i].Test_Ride_Date__c),
+                            Reschedule_Date__c: this.followupconvertToIST(valueArr[i].Reschedule_Date__c),
                             Indemnity__c: valueArr[i].Indemnity__c ? valueArr[i].Indemnity__c : '',
                             Drivers_License_Number__c: valueArr[i].Drivers_License_Number__c ? valueArr[i].Drivers_License_Number__c : '',
                             TestRideTime: this.convertToIST(valueArr[i].Test_Ride_Date__c),
@@ -848,56 +851,7 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
 
                 
                 if (result.lstLead) {
-                    this.records = result.lstLead;
-                }
-                this.datatestRides = arrdata;
-                this.testridescount = this.datatestRides.length;
-                //console.log('getTestRidesdetail'+(this.testridescou));
-            })
-            .catch(error => {
-                console.log(error);
-                this.handleErrorClick();
-            });
-    }
-   NotAttendedgetFgetTestRidesdetails() {
-    this.Testridetittle="Not Attended Test Rides"
-        this.ifFollowUp = false;
-        this.leaddetails = false;
-        this.ifTesTRideUp = true;
-        this.Ridetypetrue = false;
-        this.shownewfollowupModal = false;
-        getNotAttendedTestdrives()
-            .then(result => {
-
-
-                let arrdata = [];
-            
-                    let valueArr = result.lstTestRide;
-                    for (let i = 0; i < valueArr.length; i++) {
-                        console.log('valueArr[i].MobilePhone__c>>>>' + JSON.stringify(valueArr[i].MobilePhone__c));
-                        let value = {
-                            LeadName: valueArr[i]?.Lead__c ? valueArr[i]?.Lead__r?.Name || '' : '',
-                            Mobile: valueArr[i].MobilePhone__c ? valueArr[i].MobilePhone__c : '',
-                            Ride_Type__c: valueArr[i].Ride_Type__c ? valueArr[i].Ride_Type__c : '',
-                            Lead_Age__c: valueArr[i].Lead__c ? valueArr[i].Lead__r?.Lead_Age__c ||'' : '',
-                            //  datandtime: valueArr[i].Test_Drive_Date__c ? valueArr[i].Test_Drive_Date__c : '',
-                            Indemnity__c: valueArr[i].Indemnity__c ? valueArr[i].Indemnity__c : '',
-                            Drivers_License_Number__c: valueArr[i].Drivers_License_Number__c ? valueArr[i].Drivers_License_Number__c : '',
-                            TestRideTime: this.convertToIST(valueArr[i].Test_Ride_Date__c),
-                            Lead__c: valueArr[i].Lead__c ? valueArr[i].Lead__c : '',
-                            TestRideId: valueArr[i].Id,
-                            //  TestRideTime: this.convertToIST(TestRideTime)
-
-                        }
-                        console.log('phone=' + JSON.stringify(value.TestRideTime));
-
-                        arrdata.push(value);
-                        this.recordId = valueArr[i].Id ? valueArr[i].Id : '';
-                    }
-
-                
-                if (result.lstLead) {
-                    this.records = result.lstLead;
+                    this.isTodaysTestRideList = result.lstLead;
                 }
                 this.datatestRides = arrdata;
                 this.testridescount = this.datatestRides.length;
@@ -1148,6 +1102,13 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
                 }
                 console.log('kkk' + this.homeIndemnity);
                 break;
+            case 'Closed Lost':  // New action added
+                debugger;
+                this.openShowModalForClosedLost();
+                //this.closeLead(row);
+                
+                console.log('Lead marked as Closed Lost: ' + row.Id);
+                break;    
             default:
         }
 
@@ -1155,6 +1116,10 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
 
     openreschedule() {
         this.Rescheduledate = true;
+    }
+
+    openShowModalForClosedLost() {
+        this.showConfirmModal = true;
     }
     handledatevalue(event) {
         this.datevalue = event.target.value;
@@ -1233,6 +1198,55 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
         this.FeedbackValue = null;
     }
 
+    // for closed lost modal 
+
+    confirmClosedLost() {
+        debugger;
+        if (!this.selectedrow && this.reasonvalue != null && this.leadcancelreason != null) {
+            console.error('No row selected!');
+            this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Error',
+                    message: 'Please select all mandatory fields.',
+                    variant: 'error'
+                })
+            );
+            return;
+        }
+        // Call Apex method to update the Lead's Status to 'Closed Lost'
+        if (this.reasonvalue != null && this.leadcancelreason) {
+        updateLeadStatus({ testDriveId: this.selectedrow.TestRideId,reason: this.reasonvalue, reasonfeedback: this.leadcancelreason})
+            .then(() => {
+                debugger;
+                console.log('Lead successfully marked as Closed Lost.');
+               // this.refreshData();  // Refresh the data if needed
+               this.dispatchEvent(
+                new ShowToastEvent({
+                    title: 'Success',
+                    message: 'Lead has been marked as Closed Lost.',
+                    variant: 'success'
+                })
+            );
+               //close the modal
+               this.showConfirmModal = false;
+
+               // Refresh the data 
+               this.getFgetTestRidesdetails(this.fromDate, this.toDate);
+            })
+            .catch(error => {
+                console.error('Error updating Lead: ', error);
+            });
+        }else {
+            this.handleErrorClick();
+        }
+    }
+
+        // Handle Cancel Button in Modal
+        handleCancel() {
+            this.showConfirmModal = false;
+        }
+
+    
     newfollowupsubmit() {
         console.log('newfollowupsubmit');
         if (this.newfollowupdate == null) {
@@ -1888,6 +1902,7 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
                     const message = 'Lead has been lost';
                     this.handleSuccessClick(message);
                     this.updatefollowupcomplete();
+                    this.updatedtestridecomplete();
                     this.getFgetTestRidesdetails();
                     this.getFollowupdetails();
                 })
@@ -1949,13 +1964,17 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
     }
     reasonoptions = [
         { label: 'Battery not Detachable', value: 'Battery not Detachable' },
-        { label: 'Lost to Competitor', value: 'Lost to Competitor' },
-        { label: 'Not Interested in Buying', value: 'Not Interested in Buying' },
-        { label: 'Others', value: 'Others' },
         { label: 'Out of Delivery Area', value: 'Out of Delivery Area' },
-        { label: 'Pricing too High', value: 'Pricing too High' },
-        { label: 'Product Quality Issues', value: 'Product Quality Issues' },
-        { label: 'null', value: 'null' },
+        { label: 'Lack of Budget', value: 'Lack of Budget' },
+        { label: 'No Buying Intent', value: 'No Buying Intent' },
+        { label: 'Wrong Product Fit', value: 'Wrong Product Fit' },
+        { label: 'Unresponsive- Max Attempt', value: 'Unresponsive- Max Attempt' },
+        { label: 'Already Purchased Elsewhere', value: 'Already Purchased Elsewhere' },
+        { label: 'Not the Decision Maker', value: 'Not the Decision Maker' },
+        { label: 'Timing Not Right', value: 'Timing Not Right' },
+        { label: 'Location Issue', value: 'Location Issue' },
+        { label: 'Invalid Contact Information', value: 'Invalid Contact Information' },
+
     ];
     reasonhandleChange(event) {
         this.reasonvalue = event.detail.value;
@@ -2110,6 +2129,17 @@ export default class Testcomponenet extends NavigationMixin(LightningElement) {
             })
 
     }
+
+    showToast(title, message, variant) {
+        this.dispatchEvent(
+            new ShowToastEvent({
+                title: title,
+                message: message,
+                variant: variant
+            })
+        );
+    }
+
     convertToIST(utcDateString) {
         const timedate = utcDateString;
         // Parse the UTC date string

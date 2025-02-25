@@ -6,39 +6,35 @@
             </template>
             <div class="slds-p-around_medium">
                 <template if:true={requestLineItems.length}>
-                    <table class="slds-table slds-table_bordered slds-table_cell-buffer">
-                        <thead>
-                            <tr>
-                                <!-- <th><lightning-input type="checkbox" label="Select All" onchange={handleSelectAll} checked={selectAllChecked}></lightning-input></th> -->
-                                 
-                                <!-- <th scope="col">Name</th> -->
-                                 <th scope="col">Sr No</th> 
-                                <th scope="col">Product Name</th>
-                                <th scope="col">Product Code</th>
-                                <th scope="col">Quantity Requested</th>
-                                <th scope="col">Quantity In Hand</th>
-                                <th scope="col">Allotted Quantity</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <template for:each={requestLineItems} for:item="item" for:index="index">
-                                <tr key={item.Id}>
-                                    <!-- <td>
-                                        <lightning-input type="checkbox" data-id={item.Id} checked={item.selected} onchange={handleCheckboxChange}></lightning-input>
-                                    </td> -->
-                                    <!-- <td>{item.Name}</td> -->
-                                     <td>{item.index}</td>
-                                    <td>{item.ProductName}</td> 
-                                    <td>{item.ProductCode}</td>
-                                    <td><center>{item.QuantityRequested}</center></td>
-                                    <td><center>{item.QuantityOnHand}</center></td>
-                                    <td>
-                                        <lightning-input type="number" data-id={item.Id} value={item.AllocatedQuantity} onchange={handleInputChange} class="wide-input"></lightning-input>
-                                    </td>
+                    <!-- Wrap the table in a div with horizontal scroll -->
+                    <div class="table-container">
+                        <table class="slds-table slds-table_bordered slds-table_cell-buffer">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Sr No</th> 
+                                    <th scope="col">Product Name</th>
+                                    <th scope="col">Product Code</th>
+                                    <th scope="col">Quantity Requested</th>
+                                    <th scope="col">Quantity In Hand</th>
+                                    <th scope="col">Allotted Quantity</th>
                                 </tr>
-                            </template>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <template for:each={requestLineItems} for:item="item" for:index="index">
+                                    <tr key={item.Id}>
+                                        <td>{index}</td>
+                                        <td>{item.ProductName}</td> 
+                                        <td>{item.ProductCode}</td>
+                                        <td><center>{item.QuantityRequested}</center></td>
+                                        <td><center>{item.QuantityOnHand}</center></td>
+                                        <td>
+                                            <lightning-input type="number" data-id={item.Id} value={item.AllocatedQuantity} onchange={handleInputChange} class="wide-input"></lightning-input>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
                 </template>
                 <template if:false={requestLineItems.length}>
                     <p>No product request line items found.</p>

@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Aniket Karmakar
  * @group             : 
- * @last modified on  : 02-06-2025
+ * @last modified on  : 02-17-2025
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public class TestDriveTriggerHandler {
@@ -95,7 +95,7 @@ public class TestDriveTriggerHandler {
             }
         }
         
-        Map<Id, Lead> leadMap = new Map<Id, Lead>([SELECT Id, LeadSource, Dealer_Code__c, Phone FROM Lead WHERE Id IN :leadIds]);
+        Map<Id, Lead> leadMap = new Map<Id, Lead>([SELECT Id, LeadSource, Dealer_Code__c,Lead_Dealer_Code__c,Phone FROM Lead WHERE Id IN :leadIds]);
 
 
             for (Test_Drive__c t : newTestDrives) {
@@ -103,7 +103,7 @@ public class TestDriveTriggerHandler {
                     Lead leadRecord = leadMap.get(t.Lead__c);  
     
                     
-                    if (leadRecord != null && leadRecord.LeadSource != 'OzoneTel WhatsApp'  && dealerCodes.contains(leadRecord.Dealer_Code__c)) {
+                    if (leadRecord != null && leadRecord.LeadSource != 'OzoneTel WhatsApp'  && (dealerCodes.contains(leadRecord.Dealer_Code__c) || dealerCodes.contains(leadRecord.Lead_Dealer_Code__c))) {
     
                         if (t.Ride_Type__c == 'Home Ride') {
                             Datetime dateTimeString = t.Test_Ride_Date__c;
@@ -117,7 +117,15 @@ public class TestDriveTriggerHandler {
                         } else if (t.Ride_Type__c == 'Store Ride') {
                             Datetime dateTimeString = t.Test_Ride_Date__c;
                             String formattedTimeForStore = dateTimeString.format('dd/MM/yyyy');
-                            String rideTypeValueForStore = dealerToStoreNameMap.get(leadRecord.Dealer_Code__c);
+                            //additional condition
+                            String rideTypeValueForStore;
+
+                            if(leadRecord.Dealer_Code__c == null){
+                              rideTypeValueForStore = dealerToStoreNameMap.get(leadRecord.Lead_Dealer_Code__c);
+                            }else{
+                              rideTypeValueForStore = dealerToStoreNameMap.get(leadRecord.Dealer_Code__c);
+                            }
+                            
     
                             testDriveIdsToProcessForStore.add(t.Id);
                             idToPhoneNumberMapForStore.put(t.Id, leadRecord.Phone);

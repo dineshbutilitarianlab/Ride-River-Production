@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Aniket Karmkar
  * @group             : 
- * @last modified on  : 01-29-2025
+ * @last modified on  : 02-17-2025
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class scheduleLeadAgeWhatsappMsg implements Schedulable{
@@ -23,7 +23,7 @@ public with sharing class scheduleLeadAgeWhatsappMsg implements Schedulable{
         String imageUrl = w.no_action_book_test_ride_03__c;
         String templateName = 'no_action_book_test_ride_03';
 
-        List<Lead> leadList = [SELECT Id,Name,Dealer_Code__c,Lead_Age__c,LeadSource,Phone,(Select Id from Test_Drives__r) FROM Lead Where Lead_Age__c = 2 And Dealer_Code__c IN:storeDealerCodes];
+        List<Lead> leadList = [SELECT Id,Name,Dealer_Code__c,Lead_Dealer_Code__c,Lead_Age__c,LeadSource,Phone,(Select Id from Test_Drives__r) FROM Lead Where Lead_Age__c = 0 And (Dealer_Code__c IN:storeDealerCodes OR Lead_Dealer_Code__c IN:storeDealerCodes)];
 
         System.debug('leadList==>'+leadList);
 

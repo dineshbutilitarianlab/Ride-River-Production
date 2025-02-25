@@ -2,7 +2,7 @@
  * @description       : 
  * @author            : Aniket Karmakar
  * @group             : 
- * @last modified on  : 02-07-2025
+ * @last modified on  : 02-17-2025
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public with sharing class ScheduleIfNoBooking implements Schedulable{
@@ -23,7 +23,7 @@ public with sharing class ScheduleIfNoBooking implements Schedulable{
         for(Store_Details__mdt s : dealerCodes){
             storeDealerCodes.add(s.Dealer_Code__c);
         }
-        List<Lead> leadList= [Select id,Status,Dealer_Code__c,(Select id from Test_Drives__r) From Lead Where Status != 'Converted' and Dealer_Code__c IN:storeDealerCodes];
+        List<Lead> leadList= [Select id,Status,Dealer_Code__c,Lead_Dealer_Code__c,(Select id from Test_Drives__r) From Lead Where Status != 'Converted' and (Dealer_Code__c IN:storeDealerCodes OR Lead_Dealer_Code__c IN:storeDealerCodes)];
         for(Lead l : leadList){
             if(l.Test_Drives__r.size()>0){
                 leadidstoProcess.add(l.Id);

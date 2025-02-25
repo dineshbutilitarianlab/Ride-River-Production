@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Aniket Karmakar
  * @group             :
- * @last modified on  : 02-06-2025
+ * @last modified on  : 02-17-2025
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
  **/
 public with sharing class ScheduleQueueableOnTheDayOfTestDrive implements Schedulable{
@@ -36,7 +36,7 @@ public with sharing class ScheduleQueueableOnTheDayOfTestDrive implements Schedu
             dealerCodeSet.add(s.Dealer_Code__c);
             codeByStoreMap.put(s.Dealer_Code__c,s.Name__c);
         }
-        List<Test_Drive__c> testDrives = [SELECT Id, Lead__c, Test_Ride_Date__c,Lead__r.Dealer_Code__c, Ride_Type__c,Lead__r.LeadSource,Lead__r.Phone FROM Test_Drive__c
+        List<Test_Drive__c> testDrives = [SELECT Id, Lead__c, Test_Ride_Date__c,Lead__r.Dealer_Code__c,Lead__r.Lead_Dealer_Code__c, Ride_Type__c,Lead__r.LeadSource,Lead__r.Phone FROM Test_Drive__c
                                             WHERE Test_Ride_Date__c >= :startOfDay AND Test_Ride_Date__c <= :endOfDay];
         
         for (Test_Drive__c t : testDrives) {
@@ -47,7 +47,12 @@ public with sharing class ScheduleQueueableOnTheDayOfTestDrive implements Schedu
             } else if (t.Ride_Type__c == 'Store Ride') {
                 testDriveIdsforStore.add(t.Id);
                 idToPhoneMapForStore.put(t.Id, t.Lead__r.Phone);
-                String store = codeByStoreMap.get(t.Lead__r.Dealer_Code__c);
+                String store;
+                if(t.Lead__r.Dealer_Code__c == null){
+                    store = codeByStoreMap.get(t.Lead__r.Lead_Dealer_Code__c);
+                }else{
+                    store = codeByStoreMap.get(t.Lead__r.Dealer_Code__c);
+                } 
                 testDriveIdToStoreMap.put(t.Id, store);
             }
         }

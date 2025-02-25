@@ -2,10 +2,11 @@
 * @description       : 
 * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
 * @group             : 
-* @last modified on  : 02-11-2025
+* @last modified on  : 02-21-2025
 * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
 **/
 public without sharing class OrderTriggerHandler {
+    
     public static final Id vehicleRecordTypeId = Schema.SObjectType.Order.getRecordTypeInfosByName().get('Vehicle').getRecordTypeId();
     
     public static void handleOrderUpdate(List<Order> newOrders, Map<Id, Order> oldOrderMap) {
@@ -110,17 +111,18 @@ public without sharing class OrderTriggerHandler {
                 ordersToProcess.put(orderId, newOrder);
             }
         }
+        System.debug('purchaseOrderIds==>'+purchaseOrderIds);
         
         if (orderIdsToProcess.isEmpty()) {
             return; // Nothing to process
         }
         
         // Query Purchase Orders and their Line Items
-        Map<Id, ProductRequest> purchaseOrderMap = new Map<Id, ProductRequest>(
-            [SELECT Id, DestinationLocationId,
-             (SELECT Id, QuantityRequested, Product2Id FROM ProductRequestLineItems)
-             FROM ProductRequest WHERE Id IN :purchaseOrderIds]
-        );
+        Map<Id, ProductRequest> purchaseOrderMap = new Map<Id, ProductRequest>([SELECT Id, DestinationLocationId, (SELECT Id, QuantityRequested, Product2Id FROM ProductRequestLineItems) FROM ProductRequest WHERE Id IN :purchaseOrderIds]);
+        
+        System.debug('purchaseOrderMap===>'+purchaseOrderMap);
+        
+        
         
         // Query Order Items
         Map<Id, List<OrderItem>> orderItemsMap = new Map<Id, List<OrderItem>>();
@@ -130,11 +132,12 @@ public without sharing class OrderTriggerHandler {
             WHERE OrderId IN :orderIdsToProcess
         ]) {
             if (!orderItemsMap.containsKey(oi.OrderId)) {
-                orderItemsMap.put(oi.OrderId, new List<OrderItem>());
+                orderItemsMap.put(oi.OrderId, new List<OrderItem>());//for test 
             }
             orderItemsMap.get(oi.OrderId).add(oi);
             product2Ids.add(oi.Product2Id);
         }
+        System.debug('Product2 Ids =='+product2Ids);
         
         Set<Id> destinationLocationIds = new Set<Id>();
         for (ProductRequest pr : purchaseOrderMap.values()) {
@@ -144,11 +147,7 @@ public without sharing class OrderTriggerHandler {
         }
         
         Map<Id, ProductItem> productItemMap = new Map<Id, ProductItem>();
-        for (ProductItem pi : [
-            SELECT Id, Product2Id, LocationId
-            FROM ProductItem
-            WHERE Product2Id IN :product2Ids AND LocationId IN :destinationLocationIds
-        ]) {
+        for (ProductItem pi : [ SELECT Id, Product2Id, LocationId FROM ProductItem WHERE Product2Id IN :product2Ids AND LocationId IN :destinationLocationIds]) {
             productItemMap.put(pi.Product2Id, pi);
         }
         
@@ -202,9 +201,15 @@ public without sharing class OrderTriggerHandler {
         }
     }
     
+    private static Boolean isExecuted = false; 
     public static void maintainOrderCounter(List<Order> orderList) {
+                if (isExecuted) {
+            System.debug('Method already executed, skipping execution');
+            return; // Prevent multiple executions
+        }
+
+        isExecuted = true;
         OrderCounter__c counterSetting = OrderCounter__c.getInstance('Count');
-        
         if (counterSetting == null) {
             System.debug('OrderCounter__c custom setting is not initialized');
             return;
@@ -218,67 +223,68 @@ public without sharing class OrderTriggerHandler {
         
         for (Order ord : orderList) {
             accountIds.add(ord.AccountId);
-            dealerIds.add(ord.Dealer__c);
-            
+            dealerIds.add(ord.Dealer__c);   
         }
-        
-        Map<Id, Account> accountMap = new Map<Id, Account>(
-            [SELECT Id, AccountSource, Center_Code__c FROM Account WHERE Id IN :accountIds]
-        );
-        
-        Map<Id, Account> dealerMap = new Map<Id, Account>(
-            [SELECT Id, Center_Code__c FROM Account WHERE Id IN :dealerIds]
-        );
-        
+        system.debug('accountIds == >'+accountIds+' && dealerIds == >'+dealerIds);
+        Map<Id, Account> accountMap = new Map<Id, Account>( [SELECT Id, AccountSource, Center_Code__c FROM Account WHERE Id IN :accountIds] );
+        Map<Id, Account> dealerMap = new Map<Id, Account>( [SELECT Id, Center_Code__c FROM Account WHERE Id IN :dealerIds] );
+        system.debug('accountMap == >'+accountMap+' && dealerMap == >'+dealerMap);        
         for (Order ord : orderList) {
             Account acc = accountMap.get(ord.AccountId);
-            
-            if (acc != null && acc.AccountSource != 'River Website' && ord.Website_Order_Id__c==null) {
+            //  Removed this condtion with Pratap consent :  if (acc != null && acc.AccountSource != 'River Website' && ord.Website_Order_Id__c==null) {
+            if (acc != null &&  ord.Website_Order_Id__c==null) {
                 System.debug('Counter before increment: ' + counter);
                 counter++;
                 System.debug('Counter after increment: ' + counter);
-                
-                
                 String paddedCounter = String.valueOf(Integer.valueOf(counter));
                 while (paddedCounter.length() < 5) {
                     paddedCounter = '0' + paddedCounter;
                 }
-                
-                
                 Account dealerAccount = dealerMap.get(ord.Dealer__c);
                 if (dealerAccount != null) {
                     String centerCode = dealerAccount.Center_Code__c;
                     ord.Website_Order_Id__c = 'SB' + centerCode + DateTime.now().format('MMYYYY') + paddedCounter;
                     System.debug('Website_Order_Id__c: ' + ord.Website_Order_Id__c);
                 }
+            }else{
+                system.debug('condition matached : Website_Order_Id__c ');
             }
         }
         counterSetting.Counter__c = counter;
         update counterSetting;
     }
+    
     //code added by Aniket on 27/01/2025 for WhatsApp Integration
     public static void afterUpdate(List<Order> newOrderList,Map<Id,Order> oldOrderMap){
         try{
-            //dataSet for Allotment In Process
+            System.debug('Inside WhatsApp Integration After Update');
+            //dataSetForAllotmentIn Process
             List<Id> orderIdsToProcessWhenAllotment = new List<Id>();
             Map<Id,String> orderByPhoneMapWhenAllotment = new Map<Id,String>();
-            String templateNameForAllotment = 'full_payment_done';
+            String templateNameForAllotment='fullpayment_done';
             
-            
+            List<WhatsappIntegration__c> ws1 = WhatsappIntegration__c.getAll().values();
+            WhatsappIntegration__c w1 = WhatsappIntegration__c.getInstance('WhatsApp API');
+            String imageForAllotment = w1.fullpayment_done__c;
+            System.debug('imageForAllotment==>'+imageForAllotment);
             //dataSet for Delivery Stage
             List<Id> orderIdsToProcessWhenDelivered = new List<Id>();
             Map<Id,String> orderByPhoneMapWhenDelivered = new Map<Id,String>();
             String templateNameForDelivered = 'indie_deliverd_with_feedback_form';
             
             //dataSet for RTO Stage
-            List<Id> orderIdsToProcessWhenRTO = new List<Id>();
-            Map<Id,String> orderByPhoneMapWhenRTO = new Map<Id,String>();
-            String templateNameForRTO = 'vehicle_allocated';
+            // List<Id> orderIdsToProcessWhenRTO = new List<Id>();
+            // Map<Id,String> orderByPhoneMapWhenRTO = new Map<Id,String>();
+            // String templateNameForRTO = 'order_status_indie_allocated';
+            
+            //dataSet for RTO
+            List<Id> orderIdsForRTO = new List<Id>();
+            Map<Id, String> orderPhoneMapForRTO = new Map<Id, String>();
             
             //dataSet for ready for delivery stage
             List<Id> orderIdsToProcessWhenReadyForDelivery = new List<Id>();
             Map<Id,String> orderByPhoneMapWhenReadyForDelivery = new Map<Id,String>();
-            String templateNameForReadyForDelivery = 'indie_ready_for_delivery';
+            String templateNameForReadyForDelivery = 'ready_for_delivery';
             
             //dataSet for order cancelled stage
             List<WhatsappIntegration__c> ws = WhatsappIntegration__c.getAll().values();
@@ -290,10 +296,16 @@ public without sharing class OrderTriggerHandler {
             
             //additional validation added by Aniket on 10/02/2025
             Set<Id> orderIdsToFetchOrderProducts = new Set<Id>();
+            //additional by Aniket on 18/02/2025
+            Set<Id> orderIdsToTakeForward = new Set<Id>();
+            
             Map<Id,Id> orderAndOrderProductMap = new Map<Id,Id>();
             for(Order order : newOrderList){
-                if(vehicleRecordTypeId !=null && order.RecordTypeId == vehicleRecordTypeId && order.Status != oldOrderMap.get(order.Id).Status && order.Status == 'Vehicle Delivered'){
+                if(vehicleRecordTypeId !=null && order.RecordTypeId == vehicleRecordTypeId && order.Status != oldOrderMap.get(order.Id).Status /*&& order.Status == 'Allotment in Process'*/){
                     orderIdsToFetchOrderProducts.add(order.Id);
+                    //additional
+                    orderIdsToTakeForward.add(order.Id);
+                    
                 }
             }
             List<OrderItem> orderProductList = [SELECT Id,OrderId,Type__c from OrderItem WHERE OrderId IN:orderIdsToFetchOrderProducts]; 
@@ -302,68 +314,323 @@ public without sharing class OrderTriggerHandler {
                     orderAndOrderProductMap.put(oi.OrderId,oi.Id);
                 }
             }
+            System.debug('orderAndOrderProductMap===>'+orderAndOrderProductMap);
             //upto this
-            if(!newOrderList.isEmpty()){
-                for(Order o : newOrderList){
+            //code added on 11/02/2025 by Aniket
+            Set<Id> accountIdsToGetAccounts= new Set<Id>();
+            
+            for(Order o : newOrderList ){
+                if(o.AccountId != null){
+                    accountIdsToGetAccounts.add(o.AccountId);
+                }
+            }
+           // Map<Id,wrapperForAllotment> toPassToQueueable = new Map<Id,wrapperForAllotment>();
+
+            List<Id> orderIdsToProcess = new List<Id>();
+
+            List<Order> finalOrderList = [Select Id,RecordTypeId,Status,AccountId,Phone__c,Assigned_Vehicle__c,(Select id,Type__c from OrderItems) from Order Where Id IN:orderIdsToTakeForward]; 
+            System.debug('finalOrderList==>'+finalOrderList);
+            if(!finalOrderList.isEmpty()){
+                for(Order o : finalOrderList){
                     //Id vehicleRecordTypeId = Schema.SObjectType.Order.getRecordTypeInfosByName().get('Vehicle').getRecordTypeId();
                     System.debug('vehicleRecordTypeId==>'+vehicleRecordTypeId);
                     if(vehicleRecordTypeId != null && o.RecordTypeId == vehicleRecordTypeId){
                         if( o.Status != oldOrderMap.get(o.Id).Status && o.AccountId != null && o.Phone__c!=null){
-                            // if(o.Status == 'Allotment in Process'){
-                            //     orderByPhoneMapWhenAllotment.put(o.Id,o.Phone__c);
-                            //     orderIdsToProcessWhenAllotment.add(o.Id);   
-                            // }
-                             if(o.Status == 'Vehicle Delivered'){
+                            if(o.Status == 'Allotment in Process'){
+                                if(orderAndOrderProductMap.containsKey(o.Id) && o.Assigned_Vehicle__c != null){
+                                    
+
+                                    orderByPhoneMapWhenAllotment.put(o.Id,o.Phone__c);
+                                    orderIdsToProcessWhenAllotment.add(o.Id);
+                                    
+                                    
+                                }
+                                
+                            }
+                            else if(o.Status == 'Vehicle Delivered'){
                                 if(orderAndOrderProductMap.containsKey(o.Id)){
                                     orderByPhoneMapWhenDelivered.put(o.Id,o.Phone__c);
                                     orderIdsToProcessWhenDelivered.add(o.Id); 
                                 }
-                                  
-                            // }else if(o.Status == 'RTO Registration'){
-                            //     orderByPhoneMapWhenRTO.put(o.Id,o.Phone__c);
-                            //     orderIdsToProcessWhenRTO.add(o.Id);  
                                 
-                            // }else if(o.Status == 'Ready For Delivery'){
+                            }else if(o.Status == 'RTO Registration'){
+                                if(orderAndOrderProductMap.containsKey(o.Id)){
+                                    //additional fixes by Aniket on 18/02/2025
+                                   // OrderStatusHandler.generateIvoicesAndReceipts(newOrderList,oldOrderMap);//for experiment 
+                                    // orderIdsForRTO.add(o.Id);
+                                    // orderPhoneMapForRTO.put(o.Id, o.Phone__c);
+                                    
+                                    
+                                    //upto this
+                                }
                                 
-                            //         orderByPhoneMapWhenReadyForDelivery.put(o.Id,o.Phone__c);
-                            //         orderIdsToProcessWhenReadyForDelivery.add(o.Id);  
-                                
+                            }else if(o.Status == 'Ready For Delivery'){
+                                if(orderAndOrderProductMap.containsKey(o.Id)){
+                                    orderByPhoneMapWhenReadyForDelivery.put(o.Id,o.Phone__c);
+                                    orderIdsToProcessWhenReadyForDelivery.add(o.Id);  
+                                }
                                 
                             }else if(o.Status == 'Order Cancelled'){
                                 if(orderAndOrderProductMap.containsKey(o.Id)){
                                     orderByPhoneMapWhenOrderCancelled.put(o.Id,o.Phone__c);
                                     orderIdsToProcessWhenOrderCancelled.add(o.Id);  
-                                
+                                    
+                                    
+                                }
                                 
                             }
-                        
+                        }
                     }
-                    }
-                }
                     
                 }
+                //for avoiding SOQL Query Limit
+                
+                
+                
+            }
+            System.debug('WhatsApp Pdf generation stage');
+            // if (!orderIdsForRTO.isEmpty()) {
+            //     System.debug('orderIdsForRTO'+orderIdsForRTO);
+            //     // Attachment att = [SELECT Id, Name, Body, ParentId FROM Attachment WHERE ParentId IN :orderIdsForRTO AND Name LIKE 'Vehicle Tax Invoice%' 
+            //     //                   ORDER BY CreatedDate DESC LIMIT 1];
+            //     List<Attachment> attList = [SELECT Id, Name, Body, ParentId FROM Attachment WHERE ParentId IN :orderIdsForRTO AND Name LIKE 'Vehicle Tax Invoice%' 
+            //     ORDER BY CreatedDate DESC LIMIT 1];
+            //     System.debug('attList==>'+attList);
+            //     if(attList.size()>0){
+            //         Attachment att = attList[0];
+            //         ContentVersion cv = new ContentVersion();
+            //         cv.Title = att.Name;
+            //         cv.PathOnClient = att.Name + '.pdf';
+            //         cv.VersionData = att.Body;
+            //         cv.FirstPublishLocationId = att.ParentId;
+            //         insert cv;
+                    
+            //         ContentDistribution cd = new ContentDistribution();
+            //         cd.PreferencesAllowOriginalDownload = true;
+            //         cd.PreferencesLinkLatestVersion = true;
+            //         cd.Name = 'test';
+            //         cd.ContentVersionId = cv.Id;
+            //         insert cd;
+                    
+            //         ContentDistribution cdl = [SELECT Id,ContentDownloadUrl,DistributionPublicUrl FROM ContentDistribution WHERE Id = :cd.Id LIMIT 1];
+            //         System.debug('Public Link: ' + cdl);
+            //         System.debug('Public ContentDownloadUrl: ' + cdl.ContentDownloadUrl);
+            //         System.debug('Public DistributionPublicUrl: ' + cdl.DistributionPublicUrl);
+                    
+                    
+            //         wrapperForAllotment w2 = new wrapperForAllotment();
+            //         w2.phoneNumber = orderPhoneMapForRTO.get(cv.FirstPublishLocationId);
+            //         w2.allotMentFileLinks = cdl.ContentDownloadUrl;
+            //         w2.fileName = att.Name;
+                    
+            //         toPassToQueueable.put(cv.FirstPublishLocationId, w2);
+            //         orderIdsToProcess.add(cv.FirstPublishLocationId);
+            //     }                  
+                
+            //     else{
+            //         System.debug('No such Attachment found');
+            //     }
+                
+                
+                // System.debug('orderIdsToProcessForRTO==>'+orderIdsToProcess);
+                // System.debug('toPassToQueueable==>'+toPassToQueueable);
+                
+                //upto here
                 system.debug('orderByPhoneMap ===> ' + orderByPhoneMapWhenDelivered);
                 system.debug('orderIdsToProcess ===> ' + orderIdsToProcessWhenDelivered);
-                
-                if(!orderIdsToProcessWhenAllotment.isEmpty() && (templateNameForAllotment!=null && orderByPhoneMapWhenAllotment!=null)){
-                    System.enqueueJob(new QueueableTempWithoutParams(orderIdsToProcessWhenAllotment, templateNameForAllotment, orderByPhoneMapWhenAllotment));
-                }
-                if(!orderIdsToProcessWhenDelivered.isEmpty() &&(templateNameForDelivered!=null && orderByPhoneMapWhenDelivered!=null)){
-                    System.enqueueJob(new QueueableTempWithoutParams(orderIdsToProcessWhenDelivered, templateNameForDelivered, orderByPhoneMapWhenDelivered));
-                }
-                if(!orderIdsToProcessWhenRTO.isEmpty() &&(templateNameForRTO!=null && orderByPhoneMapWhenRTO!=null)){
-                    System.enqueueJob(new QueueableTempWithoutParams(orderIdsToProcessWhenRTO, templateNameForRTO, orderByPhoneMapWhenRTO));
-                }
-                if(!orderIdsToProcessWhenReadyForDelivery.isEmpty()&&(templateNameForReadyForDelivery !=null && orderByPhoneMapWhenReadyForDelivery!=null)){
-                    System.enqueueJob(new QueueableTempWithoutParams(orderIdsToProcessWhenReadyForDelivery, templateNameForReadyForDelivery, orderByPhoneMapWhenReadyForDelivery));
-                }
-                if(!orderIdsToProcessWhenOrderCancelled.isEmpty()&&(templateNameForOrderCancelled!=null&&imageUrlForOrderCancel!=null && orderByPhoneMapWhenOrderCancelled!=null)){
-                    System.enqueueJob(new QueueableForImageTemplateMsg(orderIdsToProcessWhenOrderCancelled, templateNameForOrderCancelled,imageUrlForOrderCancel, orderByPhoneMapWhenOrderCancelled));
-                }               
+                          
+            //}
+            if(!orderIdsToProcessWhenAllotment.isEmpty() &&(templateNameForAllotment!=null && imageForAllotment!=null && orderByPhoneMapWhenAllotment!=null)){
+                System.enqueueJob(new QueueableForImageTemplateMsg(orderIdsToProcessWhenAllotment, templateNameForAllotment,imageForAllotment, orderByPhoneMapWhenAllotment));
+                System.debug('orderIdsToProcessWhenAllotment==>'+orderIdsToProcessWhenAllotment);
+                System.debug('templateNameForAllotment==>'+templateNameForAllotment);
+                System.debug('imageForAllotment==>'+imageForAllotment);
+                System.debug('orderByPhoneMapWhenAllotment==>'+orderByPhoneMapWhenAllotment);
             }
+            
+            if(!orderIdsToProcessWhenDelivered.isEmpty() &&(templateNameForDelivered!=null && orderByPhoneMapWhenDelivered!=null)){
+                System.enqueueJob(new QueueableTempWithoutParams(orderIdsToProcessWhenDelivered, templateNameForDelivered, orderByPhoneMapWhenDelivered));
+            }
+            // 
+            // if(!orderIdsToProcess.isEmpty() && toPassToQueueable!=null){
+            //     System.enqueueJob(new QueueableOnOrderRTOStage(orderIdsToProcess,toPassToQueueable));
+            // }
+            
+            if(!orderIdsToProcessWhenReadyForDelivery.isEmpty()&&(templateNameForReadyForDelivery !=null && orderByPhoneMapWhenReadyForDelivery!=null)){
+                System.enqueueJob(new QueueableTempWithoutParams(orderIdsToProcessWhenReadyForDelivery, templateNameForReadyForDelivery, orderByPhoneMapWhenReadyForDelivery));
+            }
+            if(!orderIdsToProcessWhenOrderCancelled.isEmpty()&&(templateNameForOrderCancelled!=null&&imageUrlForOrderCancel!=null && orderByPhoneMapWhenOrderCancelled!=null)){
+                System.enqueueJob(new QueueableForImageTemplateMsg(orderIdsToProcessWhenOrderCancelled, templateNameForOrderCancelled,imageUrlForOrderCancel, orderByPhoneMapWhenOrderCancelled));
+            }     
         }catch(Exception e){
             system.debug('error ===> ' + e.getMessage());
             system.debug('error Line===> ' + e.getLineNumber());
         }
     }
+    
+    //code added by Aniket on 20/02/2025
+    public static void sendPDFAfterRTO(List<Order> newOrderList,Map<Id,Order> oldOrderMap){
+        try{
+            List<Id> orderIdsForRTO = new List<Id>();
+            Map<Id,String> orderPhoneMapForRTO = new Map<Id,String>();
+            Set<Id> orderIdsToFetchOrderProducts = new Set<Id>();
+            Set<Id> orderIdsToTakeForward = new Set<Id>();
+            Map<Id,wrapperForAllotment> toPassToQueueable = new Map<Id,wrapperForAllotment>();
+            List<Id> orderIdsToProcess = new List<Id>();
+            Map<Id,Id> orderAndOrderProductMap = new Map<Id,Id>();
+            for(Order order : newOrderList){
+                if(vehicleRecordTypeId !=null && order.RecordTypeId == vehicleRecordTypeId && order.Is_Invoice_PDF_Generated__c == true && oldOrderMap.get(order.Id).Is_Invoice_PDF_Generated__c == false /*&& order.Status == 'Allotment in Process'*/){
+                    orderIdsToFetchOrderProducts.add(order.Id);
+                    //additional
+                    orderIdsToTakeForward.add(order.Id);
+                    
+                }
+            }
+            List<OrderItem> orderProductList = [SELECT Id,OrderId,Type__c from OrderItem WHERE OrderId IN:orderIdsToFetchOrderProducts]; 
+            for(OrderItem oi : orderProductList){
+                if(oi.Type__c == 'Vehicle' && oi.OrderId != null){
+                    orderAndOrderProductMap.put(oi.OrderId,oi.Id);
+                }
+            }
+            System.debug('orderAndOrderProductMap===>'+orderAndOrderProductMap);
+            
+            List<Order> finalOrderList = [Select Id,RecordTypeId,Status,AccountId,Phone__c,Is_Invoice_PDF_Generated__c,Assigned_Vehicle__c/*,(Select id,Type__c from OrderItems)*/ from Order Where Id IN:orderIdsToTakeForward]; 
+            if(!finalOrderList.isEmpty()){
+                for(Order o:finalOrderList){
+                    if(vehicleRecordTypeId != null && o.RecordTypeId == vehicleRecordTypeId && orderAndOrderProductMap.containsKey(o.Id)){
+                        if( o.Is_Invoice_PDF_Generated__c == true && oldOrderMap.get(o.Id).Is_Invoice_PDF_Generated__c == false && o.AccountId != null && o.Phone__c!=null){
+                            orderIdsForRTO.add(o.Id);
+                            orderPhoneMapForRTO.put(o.Id, o.Phone__c);
+                        }
+                    }
+                }
+            }
+            if (!orderIdsForRTO.isEmpty()) {
+                System.debug('orderIdsForRTO'+orderIdsForRTO);
+                // Attachment att = [SELECT Id, Name, Body, ParentId FROM Attachment WHERE ParentId IN :orderIdsForRTO AND Name LIKE 'Vehicle Tax Invoice%' 
+                //                   ORDER BY CreatedDate DESC LIMIT 1];
+                List<Attachment> attList = [SELECT Id, Name, Body, ParentId FROM Attachment WHERE ParentId IN :orderIdsForRTO AND Name LIKE 'Vehicle Tax Invoice%' 
+                ORDER BY CreatedDate DESC LIMIT 1];
+                System.debug('attList==>'+attList);
+                if(attList.size()>0){
+                    Attachment att = attList[0];
+                    ContentVersion cv = new ContentVersion();
+                    cv.Title = att.Name;
+                    cv.PathOnClient = att.Name + '.pdf';
+                    cv.VersionData = att.Body;
+                    cv.FirstPublishLocationId = att.ParentId;
+                    insert cv;
+                    
+                    ContentDistribution cd = new ContentDistribution();
+                    cd.PreferencesAllowOriginalDownload = true;
+                    cd.PreferencesLinkLatestVersion = true;
+                    cd.Name = 'test';
+                    cd.ContentVersionId = cv.Id;
+                    insert cd;
+                    
+                    ContentDistribution cdl = [SELECT Id,ContentDownloadUrl,DistributionPublicUrl FROM ContentDistribution WHERE Id = :cd.Id LIMIT 1];
+                    System.debug('Public Link: ' + cdl);
+                    System.debug('Public ContentDownloadUrl: ' + cdl.ContentDownloadUrl);
+                    System.debug('Public DistributionPublicUrl: ' + cdl.DistributionPublicUrl);
+                    
+                    
+                    wrapperForAllotment w3 = new wrapperForAllotment();
+                    w3.phoneNumber = orderPhoneMapForRTO.get(cv.FirstPublishLocationId);
+                    w3.allotMentFileLinks = cdl.ContentDownloadUrl;
+                    w3.fileName = att.Name;
+                    
+                    toPassToQueueable.put(cv.FirstPublishLocationId, w3);
+                    orderIdsToProcess.add(cv.FirstPublishLocationId);
+                } else{
+                System.debug('No such Attachment found');
+            }       
+                System.debug('orderIdsToProcessForRTO==>'+orderIdsToProcess);
+                System.debug('toPassToQueueable==>'+toPassToQueueable);
+
+                if(!orderIdsToProcess.isEmpty() && toPassToQueueable!=null){
+                    System.enqueueJob(new QueueableOnOrderRTOStage(orderIdsToProcess,toPassToQueueable));
+                }
+                
+               
+                
+
+            
+            
+        }
+    }catch(Exception e){
+            System.debug('Error is ==>'+e.getMessage());
+            System.debug('Error Line Number ==>'+e.getLineNumber());
+        }
+    }
+
+    //code added by Aniket on 11/02/2025
+    public static void sendWhatsAppAfterOrderCreation(List<Order> newOrderList,Map<Id,Order> oldOrderMap){
+        try{
+            System.debug('Inside pdf whatsapp template');
+            List<Id> orderIdsToProcess = new List<Id>();
+            Set<Id> orderIdsToGet = new Set<Id>();
+            Map<Id,String> orderToProductColor = new Map<Id,String>();
+            Map<Id,wrapperForBooking> toPassToQueueable = new Map<Id,wrapperForBooking>();
+            for(Order o : newOrderList){
+                System.debug('o.Booking_Form_File_URL__c ===> ' + o.Booking_Form_File_URL__c);
+                System.debug('o.oldOrderMap.get(o.Id).Booking_Form_File_URL__c ===> ' + oldOrderMap.get(o.Id).Booking_Form_File_URL__c);
+                if(o.RecordTypeId == vehicleRecordTypeId && o.AccountId !=null && o.Booking_Form_File_URL__c != oldOrderMap.get(o.Id).Booking_Form_File_URL__c){
+                    orderIdsToGet.add(o.Id);
+                    
+                }else{
+                    return;
+                }
+            }
+            System.debug('orderIdsToGet==>'+orderIdsToGet);
+            //changes made on 14/02/2025
+            OrderItem oi = [Select Id,OrderId,Product2Id,Type__c from OrderItem WHERE OrderId=:orderIdsToGet AND Type__c='Vehicle' LIMIT 1];
+            System.debug('Order Products==>'+oi);
+            Product2 p = [Select Id,Colour__c from Product2 WHERE Id=:oi.Product2Id LIMIT 1];
+            System.debug('Product==>'+p);
+
+            
+            //upto here
+            List<Order> ordersToProcess = [Select id,Phone__c,RecordTypeId,Account.Name,Website_Order_Id__c,Booking_Form_File_URL__c from Order WHERE Id IN:orderIdsToGet];
+            System.debug('ordersToProcess==>'+ordersToProcess);
+            for(Order order : ordersToProcess){
+                if(order.RecordTypeId == vehicleRecordTypeId){
+                    orderIdsToProcess.add(order.Id);
+                    //orderToProductColor.put(order.Id,p.Colour__c);
+                    
+                    wrapperForBooking w = new wrapperForBooking();
+                    w.phoneNumber = order.Phone__c;
+                    w.bookingId = order.Website_Order_Id__c;
+                    w.color = p.Colour__c;//order.Assigned_Vehicle__r.Colour__c;
+                    w.pdfLink = order.Booking_Form_File_URL__c;
+                    w.fileName = 'River Indie Booking Receipt';
+                    toPassToQueueable.put(order.Id,w);
+                }
+            }
+            System.debug('toPassToQueueable==>'+toPassToQueueable);
+            if(!orderIdsToProcess.isEmpty()){
+                System.enqueueJob(new QueueableOnOrderCreationAfterBooking(orderIdsToProcess,toPassToQueueable));
+            }
+        }catch(Exception e){
+            System.debug('Error occured==>'+e.getMessage());
+            System.debug('Eroor Line Number is =====>'+e.getLineNumber());
+        }
+        
+        
+        
+    }
+    
+    public class wrapperForBooking{
+        public String phoneNumber{get;set;}
+        public String bookingId{get;set;}
+        public String color{get;set;}
+        public String pdfLink{get;set;}
+        public String fileName{get;set;}
+    }
+    
+    public class wrapperForAllotment{
+        public String phoneNumber{get;set;}
+        public String allotMentFileLinks{get;set;}
+        public String fileName{get;set;}
+    }
+    
 }

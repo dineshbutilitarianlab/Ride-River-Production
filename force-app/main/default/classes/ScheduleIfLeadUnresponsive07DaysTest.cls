@@ -30,7 +30,7 @@ public class ScheduleIfLeadUnresponsive07DaysTest {
         
         Test.startTest();
         String cronExpression = '0 0 0 1 1 ?';
-        System.schedule('Test', cronExpression, new ScheduleIfLeadUnresponsive07Days());
+        System.schedule('Test3', cronExpression, new ScheduleIfLeadUnresponsive07Days());
         Test.stopTest();
     }
 

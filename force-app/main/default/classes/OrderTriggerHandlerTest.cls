@@ -38,11 +38,13 @@ public class OrderTriggerHandlerTest {
         
         Order oldOrder = new Order( AccountId = testAccount.Id, Status__c = 'Processing',Status='Processing',Assigned_Vehicle__c = testVehicle.Id,EffectiveDate = Date.today(),Pricebook2Id = stdPrBk,Payment_Status__c = 'Completed', Contact__c = con.id);
         insert oldOrder;
+        
+        
+        OrderItem testOrderItem = new OrderItem( OrderId = oldOrder.Id, Product2Id = testProduct.Id, UnitPrice = 100.0, Quantity = 1, PricebookEntryId = testPricebookEntry.Id,Type__c='Vehicle');
+        insert testOrderItem;
+        
         oldOrder.Status = 'Activated';
         update oldOrder;
-        
-        OrderItem testOrderItem = new OrderItem( OrderId = oldOrder.Id, Product2Id = testProduct.Id, UnitPrice = 100.0, Quantity = 1, PricebookEntryId = testPricebookEntry.Id);
-        insert testOrderItem;
         
         Test.startTest();
         oldOrder.Status = 'Vehicle Delivered';
@@ -103,40 +105,86 @@ public class OrderTriggerHandlerTest {
     
     @isTest
     static void testCreateProductTransfer() {
-        Account testAccount = new Account(Name = 'Test Account', Type = 'Customer');
-        insert testAccount;
         
-        Product2 testProduct = new Product2(Name = 'Test Product', IsActive = true, ProductCode = 'LTIPK - 001', HSN_Code__c = 'qw12', Type__c= 'Merchandise');
+       
+        Account testAccount = new Account(Name = 'Test Account', Type = 'Dealer',Phone='0987654321');
+        insert testAccount;
+       
+        Schema.Location l1 = new Schema.Location(); 
+        l1.Name = 'Warehouse 1';
+        l1.LocationType = 'Secondary';
+        l1.IsInventoryLocation = true;
+       // l1.Account__c=testAccount.Id;
+        l1.Price_Book__c= Test.getStandardPricebookId();
+        insert l1;
+                
+        Contact con = new Contact(LastName ='Dinesh',Phone = '7834878789',AccountId = testAccount.id,Location__c=l1.Id);
+        insert con;
+        
+       
+        
+        Product2 testProduct = new Product2(Name = 'Test Product', IsActive = true, ProductCode = 'LTIPK - 001', HSN_Code__c = 'qw12', Type__c= 'Vehicle');
         insert testProduct;
         
         PricebookEntry testPricebookEntry = new PricebookEntry(Product2Id = testProduct.Id, Pricebook2Id = Test.getStandardPricebookId(), UnitPrice = 100.0, IsActive = true);
         insert testPricebookEntry;
         
-        Order testOrder = new Order(AccountId = testAccount.Id, Status = 'Back Order', EffectiveDate = Date.today(), Pricebook2Id = Test.getStandardPricebookId());
-        insert testOrder;
         
-        ProductRequest testProductRequest = new ProductRequest(ShipmentType = 'VOR', Status = 'New');
+         Asset testAsset = new Asset(Name='Test Asset',AccountId=testAccount.Id,	Product2Id=testProduct.Id);
+        insert testAsset;
+        
+        VehicleDefinition testVD = new VehicleDefinition(Name='Test VehicleDefinition',ProductId=testProduct.Id);
+        insert testVD;
+        
+        Software_Version__c testSV = new Software_Version__c(Name='Test Software Version');
+        insert testSV;
+        
+        Vehicle testVehicle = new Vehicle(Name='Test Vehicle', Account__c=testAccount.Id, AssetId=testAsset.Id,  VehicleDefinitionId=testVD.Id, VehicleIdentificationNumber='A2B3',  Software_Version__c=testSV.Id, Charger_PC_Number__c='abcd',PDI_Status_Pass__c=true);
+        insert testVehicle;
+        
+        AssetMilestone asm = new AssetMilestone(Name = 'ASM1', MilestoneDate = Date.today().addMonths(2),  Stage = 'Active', AssetId = testAsset.Id, UsageType = 'Automotive', MilestoneType = 'PDI', VehicleId = testVehicle.Id);
+        insert asm;
+        
+        
+        
+        
+        
+        ProductRequest testProductRequest = new ProductRequest(ShipmentType = 'VOR', Status = 'New', DestinationLocationId=l1.Id,Destination_Location__c=l1.Id/*,Order__c=testOrder.Id,Requested_Quantity__c=120*/);
         insert testProductRequest;
         
-        ProductRequestLineItem testLineItem = new ProductRequestLineItem(ParentId = testProductRequest.Id, Product2Id = testProduct.Id, QuantityRequested = 1);
+        Order testOrder = new Order(AccountId = testAccount.Id, Status = 'Back Order', EffectiveDate = Date.today(), Pricebook2Id = Test.getStandardPricebookId(),Assigned_Vehicle__c=testVehicle.Id,IsVOR__c=true,Purchase_Order__c=testProductRequest.Id);
+        insert testOrder;
+        
+        Order testOrder2 = new Order(AccountId = testAccount.Id, Status = 'Activated', EffectiveDate = Date.today(), Pricebook2Id = Test.getStandardPricebookId(),IsVOR__c=true);
+        insert testOrder2;
+        
+         ProductRequest testProductRequest2 = new ProductRequest(ShipmentType = 'VOR', Status = 'Processing', DestinationLocationId=l1.Id,Destination_Location__c=l1.Id,Order__c=testOrder.Id/*,Requested_Quantity__c=120*/);
+        insert testProductRequest2;
+        
+       /* testOrder.Purchase_Order__c = testProductRequest.Id;
+        update testOrder;*/
+        
+        ProductRequestLineItem testLineItem = new ProductRequestLineItem(ParentId = testProductRequest.Id, Product2Id = testProduct.Id, QuantityRequested = 20,Price_Book__c=Test.getStandardPricebookId());
         insert testLineItem;
-        
-        testOrder.Purchase_Order__c = testProductRequest.Id;
-        update testOrder;
-        
-        Schema.Location l1 = new Schema.Location(); 
-        l1.Name = 'Warehouse 1';
-        l1.LocationType = 'Secondary';
-        l1.IsInventoryLocation = true;
-        insert l1;
-        
-        ProductItem testProductItem = new ProductItem(Product2Id = testProduct.Id, LocationId = l1.Id, QuantityOnHand =123); 
+                
+        ProductItem testProductItem = new ProductItem(Product2Id = testProduct.Id, LocationId = l1.Id, QuantityOnHand=123,Inward_Quantity__c=160,Transfer_Quantity__c=20); 
         insert testProductItem;
         
-        OrderItem testOrderItem = new OrderItem(OrderId = testOrder.Id, Product2Id = testProduct.Id, Quantity = 1, PricebookEntryId = testPricebookEntry.Id, UnitPrice = 123);
+        OrderItem testOrderItem = new OrderItem(OrderId = testOrder.Id, Product2Id = testProduct.Id, Quantity = 1, PricebookEntryId = testPricebookEntry.Id, UnitPrice = 123,Type__c='Vehicle');
         insert testOrderItem;
         
+       /* OrderItem testOrderItem2 = new OrderItem(OrderId = testOrder.Id, Product2Id = testProduct.Id, Quantity = 2, PricebookEntryId = testPricebookEntry.Id, UnitPrice = 121,Type__c= 'Merchandise');
+        insert testOrderItem2;*/
+        
+       // testOrder.Purchase_Order__c = testProductRequest.Id;
+        //testOrder.Accessories_Discount_Amount__c=100.00;
+       // update testOrder;//
+        
+        Map<Id,ProductItem> productItemMap = new Map<Id,ProductItem>();
+        productItemMap.put(testProductItem.Product2Id, testProductItem);
+        
         Test.startTest();
+        
         
         testOrder.Status = 'Activated';
         update testOrder;
@@ -152,8 +200,30 @@ public class OrderTriggerHandlerTest {
         Account dealerAccount = new Account(Name = 'Dealer Account', Type = 'Dealer', Center_Code__c = '123');
         insert dealerAccount;
         
-        Order testOrder = new Order(AccountId = testAccount.Id, Dealer__c = dealerAccount.Id, Status = 'Processing', EffectiveDate = Date.today());
+         Product2 testProduct = new Product2(Name = 'Test Product', IsActive = true, ProductCode = 'LTIPK - 001', HSN_Code__c = 'qw12', Type__c= 'Vehicle');
+        insert testProduct;
+        
+       /* PricebookEntry testPricebookEntry = new PricebookEntry(Product2Id = testProduct.Id, Pricebook2Id = Test.getStandardPricebookId(), UnitPrice = 100.0, IsActive = true);
+        insert testPricebookEntry;*/
+
+        
+        Id stdPrBk = Test.getStandardPricebookId();
+        PricebookEntry testPricebookEntry = new PricebookEntry(
+            Product2Id = testProduct.Id,
+            Pricebook2Id = stdPrBk,
+            UnitPrice = 100.0,	
+            IsActive = true
+        );
+        insert testPricebookEntry;  
+        
+        
+        
+        Order testOrder = new Order(AccountId = testAccount.Id, Dealer__c = dealerAccount.Id, Status = 'Processing', EffectiveDate = Date.today(),Pricebook2Id = stdPrBk);
         insert testOrder;
+        
+        OrderItem testOrderItem = new OrderItem(OrderId = testOrder.Id, Product2Id = testProduct.Id, Quantity = 1, PricebookEntryId = testPricebookEntry.Id, UnitPrice = 123,Type__c='Vehicle');
+        insert testOrderItem;
+        
         
         OrderCounter__c counterSetting = new OrderCounter__c(Name = 'Count', Counter__c = 1000);
         insert counterSetting;
@@ -200,7 +270,7 @@ public class OrderTriggerHandlerTest {
         AssetMilestone asm = new AssetMilestone(Name = 'ASM1', MilestoneDate = Date.today().addMonths(2),  Stage = 'Active', AssetId = testAsset.Id, UsageType = 'Automotive', MilestoneType = 'PDI', VehicleId = testVehicle.Id);
         insert asm;
         
-        Order oldOrder = new Order( AccountId = testAccount.Id, Status__c = 'Processing',Status='Processing',Assigned_Vehicle__c = testVehicle.Id,EffectiveDate = Date.today(),Pricebook2Id = stdPrBk,Payment_Status__c = 'Completed', Contact__c = con.id);
+        Order oldOrder = new Order( AccountId = testAccount.Id, Status__c = 'Processing',Status='Processing',Assigned_Vehicle__c = testVehicle.Id,EffectiveDate = Date.today(),Pricebook2Id = stdPrBk,Payment_Status__c = 'Completed', Contact__c = con.id,Booking_Form_File_URL__c='test.pdf',Website_Order_Id__c='TestABC!@#',Allotment_In_Process_File_URL__c='testInvoice.pdf');
         insert oldOrder;
         
         
@@ -214,17 +284,20 @@ public class OrderTriggerHandlerTest {
             Name = 'WhatsApp API',
             API_Endpoint__c = 'https://api.whatsapp.com/send',
             API_Key__c = 'mock-api-key',
-            order_cancelled__c='example.jpg' 
+            order_cancelled__c='example.jpg',
+             fullpayment_done__c='examplePayment.jpg'
         );
         insert mockIntegration;
         
         Test.setMock(HttpCalloutMock.class, new HttpCalloutMockImpl());
         
         Test.startTest();
+        oldOrder.Booking_Form_File_URL__c='updated.pdf';
+        update oldOrder;
         oldOrder.Status = 'Allotment in Process'; 
         update oldOrder;
-        oldOrder.Status='RTO Registration';
-        update oldOrder;
+        /*oldOrder.Status='RTO Registration';
+        update oldOrder;*/
         oldOrder.Status='Ready For Delivery';
         update oldOrder;
         oldOrder.Status='Vehicle Delivered';
@@ -287,29 +360,36 @@ public class OrderTriggerHandlerTest {
         AssetMilestone asm = new AssetMilestone(Name = 'ASM1', MilestoneDate = Date.today().addMonths(2),  Stage = 'Active', AssetId = testAsset.Id, UsageType = 'Automotive', MilestoneType = 'PDI', VehicleId = testVehicle.Id);
         insert asm;
         
-        Order oldOrder = new Order( AccountId = testAccount.Id, Status__c = 'Processing',Status='Processing',EffectiveDate = Date.today(),Pricebook2Id = stdPrBk,Payment_Status__c = 'Completed', Contact__c = con.id);
+        Order oldOrder = new Order( AccountId = testAccount.Id, Status__c = 'Draft',EffectiveDate = Date.today(),Pricebook2Id = stdPrBk,Payment_Status__c = 'Completed', Contact__c = con.id,Booking_Form_File_URL__c='test.pdf',Website_Order_Id__c='TestABC!@#',Allotment_In_Process_File_URL__c='testInvoice.pdf',Status='Draft'/*,Assigned_Vehicle__c=testVehicle.Id*/);
         insert oldOrder;
         
         
         OrderItem testOrderItem = new OrderItem( OrderId = oldOrder.Id, Product2Id = testProduct.Id, UnitPrice = 100.0,Type__c='Vehicle', Quantity = 1, PricebookEntryId = testPricebookEntry.Id);
         insert testOrderItem;
          
-        Order_Invoice__c o = new Order_Invoice__c (Invoice_Type__c='Vehicle Invoice',Order__c=oldOrder.Id,Name='test',Invoice_Number__c='ab1cd2');
-        insert o;
+       /* Order_Invoice__c o = new Order_Invoice__c (Invoice_Type__c='Vehicle Invoice',Order__c=oldOrder.Id,Name='test',Invoice_Number__c='ab1cd2');
+        insert o;*/
          
          WhatsappIntegration__c mockIntegration = new WhatsappIntegration__c(
             Name = 'WhatsApp API',
             API_Endpoint__c = 'https://api.whatsapp.com/send',
             API_Key__c = 'mock-api-key',
-            order_cancelled__c='example.jpg' 
+            order_cancelled__c='example.jpg' ,
+             fullpayment_done__c='examplePayment.jpg'
         );
         insert mockIntegration;
         
         Test.setMock(HttpCalloutMock.class, new HttpCalloutMockImplAfterCancel());
         
         Test.startTest();
-        oldOrder.Status = 'Allotment in Process'; 
+        oldOrder.Status = 'Allotment in Process';
+        update oldOrder; 
+        /* oldOrder.Status='Pre Invoice';
         update oldOrder;
+        oldOrder.Status='Ready For Delivery';
+        update oldOrder;
+        oldOrder.Status='Vehicle Delivered';
+        update oldOrder; */
         oldOrder.Status='Order Cancelled';
         update oldOrder;
         Test.stopTest();
@@ -333,6 +413,118 @@ public class OrderTriggerHandlerTest {
             return res;
         }
          
+    }
+    //added by Aniket on 18/02/2025
+    @IsTest
+    static void testForRTORegistration(){
+         Account testAccount = new Account(Name = 'Test Account',Type='Customer',Phone='0987654321');
+        insert testAccount;
+        
+        Contact con = new Contact(LastName ='Dinesh',Phone = '7834878789',AccountId = testAccount.id);
+        insert con;
+        
+        Product2 testProduct = new Product2(Name = 'Test Product', IsActive = true,ProductCode='abcd',HSN_Code__c='abcd',Type__c='Vehicle');
+        insert testProduct;
+        
+        Id stdPrBk = Test.getStandardPricebookId();
+        PricebookEntry testPricebookEntry = new PricebookEntry(
+            Product2Id = testProduct.Id,
+            Pricebook2Id = stdPrBk,
+            UnitPrice = 100.0,	
+            IsActive = true
+        );
+        insert testPricebookEntry;
+        
+        Asset testAsset = new Asset(Name='Test Asset',AccountId=testAccount.Id,	Product2Id=testProduct.Id);
+        insert testAsset;
+        
+        VehicleDefinition testVD = new VehicleDefinition(Name='Test VehicleDefinition',ProductId=testProduct.Id);
+        insert testVD;
+        
+        Software_Version__c testSV = new Software_Version__c(Name='Test Software Version');
+        insert testSV;
+        
+        Vehicle testVehicle = new Vehicle(Name='Test Vehicle', Account__c=testAccount.Id, AssetId=testAsset.Id,  VehicleDefinitionId=testVD.Id, VehicleIdentificationNumber='A2B3',  Software_Version__c=testSV.Id, Charger_PC_Number__c='abcd',PDI_Status_Pass__c=true);
+        insert testVehicle;
+        
+        AssetMilestone asm = new AssetMilestone(Name = 'ASM1', MilestoneDate = Date.today().addMonths(2),  Stage = 'Active', AssetId = testAsset.Id, UsageType = 'Automotive', MilestoneType = 'PDI', VehicleId = testVehicle.Id);
+        insert asm;
+        
+        Order oldOrder = new Order( AccountId = testAccount.Id, Status__c = 'Processing',Status='Processing',Assigned_Vehicle__c = testVehicle.Id,EffectiveDate = Date.today(),Pricebook2Id = stdPrBk,Payment_Status__c = 'Completed', Contact__c = con.id,Booking_Form_File_URL__c='test.pdf',Website_Order_Id__c='TestABC!@#',Allotment_In_Process_File_URL__c='testInvoice.pdf');
+        insert oldOrder;
+        
+        
+        OrderItem testOrderItem = new OrderItem( OrderId = oldOrder.Id, Product2Id = testProduct.Id, UnitPrice = 100.0,Type__c='Vehicle', Quantity = 1, PricebookEntryId = testPricebookEntry.Id);
+        insert testOrderItem;
+         
+        Order_Invoice__c o = new Order_Invoice__c (Invoice_Type__c='Vehicle Invoice',Order__c=oldOrder.Id,Name='test',Invoice_Number__c='ab1cd2');
+        insert o;
+        
+         WhatsappIntegration__c mockIntegration = new WhatsappIntegration__c(
+            Name = 'WhatsApp API',
+            API_Endpoint__c = 'https://api.whatsapp.com/send',
+            API_Key__c = 'mock-api-key',
+            order_cancelled__c='example.jpg' ,
+             fullpayment_done__c='examplePayment.jpg'
+             
+        );
+        insert mockIntegration;
+        
+        oldOrder.Booking_Form_File_URL__c='updated.pdf';
+        update oldOrder;
+        
+        
+        
+        Attachment att = new Attachment(Name='Vehicle Tax Invoice', Body=Blob.valueOf('Test'), ParentId=oldOrder.Id);
+        insert att;
+       /* ContentVersion cv = new ContentVersion();
+                cv.Title = att.Name;
+                cv.PathOnClient = att.Name + '.pdf';
+                cv.VersionData = att.Body;
+                cv.FirstPublishLocationId = att.ParentId;
+                insert cv;
+                
+                ContentDistribution cd = new ContentDistribution();
+                cd.PreferencesAllowOriginalDownload = true;
+                cd.PreferencesLinkLatestVersion = true;
+                cd.Name = 'test';
+                cd.ContentVersionId = cv.Id;
+                insert cd;
+                
+                ContentDistribution cdl = [SELECT Id,ContentDownloadUrl,DistributionPublicUrl FROM ContentDistribution WHERE Id = :cd.Id LIMIT 1];*/
+       
+        Test.setMock(HttpCalloutMock.class, new HttpCalloutMockImpl222());
+        
+        Test.startTest();
+        oldOrder.Status='Pre Invoice';
+        update oldOrder;
+        oldOrder.Status='RTO Registration';
+        update oldOrder;
+        oldOrder.Status='Ready For Delivery';
+        update oldOrder;
+        oldOrder.Status='Vehicle Delivered';
+        update oldOrder; 
+        
+        Test.stopTest();
+        
+        
+        
+    }
+    
+    public class HttpCalloutMockImpl222 implements HttpCalloutMock {
+        public HTTPResponse respond(HTTPRequest req) {
+             
+            
+            String body = req.getBody();
+            Map<String, Object> requestBody = (Map<String, Object>)JSON.deserializeUntyped(body);
+           
+            
+            
+            HTTPResponse res = new HTTPResponse();
+            res.setStatusCode(200);
+            res.setBody('{"status":"success"}'); // Simulate a successful API response
+            return res;
+        }
     }
     
     

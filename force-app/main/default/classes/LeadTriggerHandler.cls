@@ -2,7 +2,7 @@
  * @description       :
  * @author            : Aniket Karmakar
  * @group             :
- * @last modified on  : 02-06-2025
+ * @last modified on  : 02-17-2025
  * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
  **/
 public class LeadTriggerHandler {
@@ -21,11 +21,19 @@ public class LeadTriggerHandler {
             List<WhatsappIntegration__c> ws = WhatsappIntegration__c.getAll().values();
             WhatsappIntegration__c w = WhatsappIntegration__c.getInstance('WhatsApp API');
             String imageUrl = w.new_lead_book_a_test_ride_03__c;
-            
+
+            //new enhancement by Aniket on 18/02/2025
+            Set<Id> leadIds = new Set<Id>();
+            for(Lead l : newLeads){
+                leadIds.add(l.Id);
+
+            }
+            List<Lead> leadListToFetch = [Select Id,LeadSource,Phone,Dealer_Code__c,Lead_Dealer_Code__c FROM Lead WHERE (Dealer_Code__c IN:storeDealerCodes OR Lead_Dealer_Code__c IN:storeDealerCodes) AND Id IN:leadIds];
+            //up to here
             // String templateName = 'new_lead_book_a_test_ride_03';
-            if(!newLeads.isEmpty()){
-                for(Lead lead : newLeads){
-                    if((lead.LeadSource == 'Bike Dekho' || lead.LeadSource =='Facebook'||lead.LeadSource=='Google'||lead.LeadSource=='91Wheels') && storeDealerCodes.contains(lead.Dealer_Code__c) && lead.Phone !=null ){
+            if(!leadListToFetch.isEmpty()){
+                for(Lead lead : leadListToFetch){
+                    if((lead.LeadSource == 'Bike Dekho' || lead.LeadSource =='Facebook'||lead.LeadSource=='Google'||lead.LeadSource=='91Wheels') && (storeDealerCodes.contains(lead.Dealer_Code__c)||storeDealerCodes.contains(lead.Lead_Dealer_Code__c)) && lead.Phone !=null ){
                         newLeadIds.add(lead.Id);
                         newLeadMap.put(lead.Id,lead.Phone);
                     }

@@ -1,3 +1,10 @@
+/**
+ * @description       : 
+ * @author            : ChangeMeIn@UserSettingsUnder.SFDoc
+ * @group             : 
+ * @last modified on  : 02-20-2025
+ * @last modified by  : ChangeMeIn@UserSettingsUnder.SFDoc
+**/
 public class AttachmentHandlerClass {
     
     @Future (callout=true)
@@ -161,7 +168,7 @@ public class AttachmentHandlerClass {
                     attachmentList.add(att3);
                 }
                 else{
-                    throw new MyException('Accessories, Parts, and& Merchandise Invoice record is not found for the order '+order.OrderNumber);
+                    throw new MyException('Accessories, Parts, and Merchandise Invoice record is not found for the order '+order.OrderNumber);
                 }
             }
             
@@ -174,7 +181,17 @@ public class AttachmentHandlerClass {
         
         if (!attachmentsToInsert.isEmpty()) {
             insert attachmentsToInsert;
+            if (attachmentsToInsert.size() > 0) {//added By Aniket on 20/02/2025
+                List<Order> order = [SELECT Id, Is_Invoice_PDF_Generated__c FROM Order WHERE Id = :attachmentsToInsert[0].ParentId LIMIT 1];
+        
+                if (!order.isEmpty()) {
+                    Order o = order[0];
+                    o.Is_Invoice_PDF_Generated__c = true;
+                    update o;
+                }
+            }
         }
+        
         system.debug('attachmentsToInsert==>'+attachmentsToInsert);
     }
     
@@ -285,6 +302,8 @@ public class AttachmentHandlerClass {
             list<Order_Payment__c>lstOrderPayments=[SELECT name,Payments__r.Payment_Status__c,Order__r.Id FROM Order_Payment__c  WHERE Id=:OrderpaymentId];
             List<Attachment> attachmentsToInsert = new List<Attachment>();
             
+            List<Order_Payment__c> orderPaymentToUpdate = new List<Order_Payment__c>();//added by Aniket
+
             for(Order_Payment__c obj :lstOrderPayments){
                 if(obj.Payments__r.Payment_Status__c=='Success'){
                     PageReference pdfPage1 = Page.CreateReceiptPayments; 
@@ -292,6 +311,9 @@ public class AttachmentHandlerClass {
                     Blob pdfBlob1;
                     if (!Test.isRunningTest()) {
                         pdfBlob1= pdfPage1.getContentAsPDF();
+                        obj.Payment_Acknowledgement_Generated__c=true;//added By Aniket
+                        orderPaymentToUpdate.add(obj);
+
                     } else {
                         pdfBlob1 = Blob.valueOf('Test');
                     }
@@ -311,11 +333,15 @@ public class AttachmentHandlerClass {
                 insert attachmentsToInsert;
                 SendEmailHandller.sendPreAttchamnets(lstOrderPayments[0].Id,attachmentsToInsert); 
             }
+            if(!orderPaymentToUpdate.isEmpty()){ //added By Aniket
+                update orderPaymentToUpdate;//added By Aniket
+            }
         }catch (Exception e) {
             System.debug('Exception occurred: ' + e.getMessage());
         }
         
     }
+   
     
     Public class myexception extends exception{}
 }

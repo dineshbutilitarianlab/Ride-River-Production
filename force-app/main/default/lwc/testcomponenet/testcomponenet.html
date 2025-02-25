@@ -27,22 +27,6 @@
                             class="slds-m-right_x-small slds-align_absolute-center uniform-button"></lightning-button>
                     </div>
                 </div>
-                <div class="slds-grid slds-wrap slds-p-around_medium">
-                    
-                    <div class="slds-size--2-of-6 slds-p-around_small">
-                        <lightning-button variant="brand" label="Not Attended Leads" slot="actions" onclick={NotAttendedgetLeadDetails}
-                            class="slds-m-right_x-small slds-align_absolute-center uniform-button"></lightning-button>
-                    </div>
-
-                    <div class="slds-size--2-of-6 slds-p-around_small">
-                        <lightning-button variant="brand" label=" Not Attended Test Ride " onclick={NotAttendedgetFgetTestRidesdetails}
-                            class="slds-m-right_x-small slds-align_absolute-center uniform-button"></lightning-button>
-                    </div>
-                    <div class="slds-size--2-of-6 slds-p-around_small">
-                        <lightning-button variant="brand" label="Not Attended Follow Up " onclick={NotAttendedgetFollowupdetails}
-                            class="slds-m-right_x-small slds-align_absolute-center uniform-button"></lightning-button>
-                    </div>
-                </div>
 
                 <div if:true={Allleads}>
                     <div class="table-container" style="height:515px;">
@@ -50,6 +34,27 @@
                             hide-checkbox-column onrowaction={handleRowAction} class="slds-table">
                         </lightning-datatable>
                     </div>
+                <!-- Buttons for pagination Added by rohit -->
+                <div class="slds-m-top_medium slds-grid slds-grid_align-center slds-grid_vertical-align-center">
+                    <lightning-button 
+                        label="Previous" 
+                        onclick={handlePrevious} 
+                        disabled={disablePrevious}
+                        class="slds-m-right_small"
+                        aria-label="Go to previous page">
+                    </lightning-button>
+                
+                    <span class="slds-text-title_bold slds-var-m-horizontal_small">Page {pageNumber}</span>
+                
+                    <lightning-button 
+                        label="Next" 
+                        onclick={handleNext} 
+                        disabled={disableNext}
+                        class="slds-m-left_small"
+                        aria-label="Go to next page">
+                    </lightning-button>
+                </div>
+                
                     <!-- 
 
                     <div class="slds-grid slds-grid_align-end" style="margin-top: 20px; margin-right: 20px;">
@@ -629,10 +634,23 @@
 
 
         <div if:true={ifFollowUp} class="slds-col slds-size--4-of-6">
-            <lightning-card title={Followuptittle} icon-name="custom:custom63" style="height:720px;">
+            <lightning-card title="Follow-Ups" icon-name="custom:custom63" style="height:720px;">
                 <div class="slds-text-align_right slds-p-right_small">
                     <p> Num of FollowUps:<strong>{followupscount} </strong> </p>
                 </div>
+
+                <div class="slds-grid slds-gutters slds-p-around_small slds-m-around_medium">
+                    <div class="slds-col">
+                        <lightning-input type="date" label="From Date" value={fromDate} onchange={handleFromDateChange}></lightning-input>
+                    </div>
+                    <div class="slds-col">
+                        <lightning-input type="date" label="To Date" value={toDate} onchange={handleToDateChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-align-bottom">
+                        <lightning-button label="Filter" onclick={filterLeads} variant="brand"></lightning-button>
+                    </div>
+                </div>
+
                 <template if:true={recordId}>
                     <!--  <div class="slds-p-around_small slds-m-around_medium">
                         <lightning-button label="New" onclick={showModalBox} variant="brand">
@@ -955,7 +973,19 @@
 
 
         <div if:true={ifTesTRideUp} class="slds-col slds-size--4-of-6" style="height:720px;">
-            <lightning-card title={Testridetittle} icon-name="custom:custom98">
+            <lightning-card title="Test Rides" icon-name="custom:custom98">
+
+                <div class="slds-grid slds-gutters slds-p-around_small slds-m-around_medium">
+                    <div class="slds-col">
+                        <lightning-input type="date" label="From Date" value={fromDate} onchange={handleFromDateChange}></lightning-input>
+                    </div>
+                    <div class="slds-col">
+                        <lightning-input type="date" label="To Date" value={toDate} onchange={handleToDateChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-align-bottom">
+                        <lightning-button label="Filter" onclick={filterTestRides} variant="brand"></lightning-button>
+                    </div>
+                </div>
 
                 <template if:true={recordId}>
 
@@ -1017,6 +1047,38 @@
                         </lightning-datatable>
                     </div>
 
+<!-- Confirmation Modal for "Closed Lost" -->
+<template if:true={showConfirmModal}>
+<section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+    <div class="slds-modal__container">
+        <header class="slds-modal__header">
+            <h2 class="slds-text-heading_medium">Lead Lost</h2>
+        </header>
+        <div class="slds-modal__content slds-p-around_medium">
+            <lightning-combobox name="progress" label="Reason" value={reasonvalue}
+                options={reasonoptions} onchange={reasonhandleChange}></lightning-combobox>
+
+            <lightning-input type="text" label="Cancel For Reason" value={leadcancelreason}
+                onchange={handleleadcancelreason} required minlength="6"></lightning-input>
+        </div>
+
+        <footer class="slds-modal__footer slds-text-align_center">
+            <lightning-button variant="success" label="Save" title="Successful action"
+                onclick={confirmClosedLost} class="slds-m-left_x-small">
+            </lightning-button>
+            <lightning-button variant="destructive" label="Cancel"
+                onclick={handleCancel}
+                class="slds-m-left_x-small">
+            </lightning-button>
+
+        </footer>
+
+    </div>
+</section>
+<div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>
+
+    
                 </template>
                 <template if:true={showcancelModal}>
                     <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
